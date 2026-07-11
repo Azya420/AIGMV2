@@ -2,16 +2,15 @@
 
 Interaktywny prototyp polskiej gry webowej prowadzonej przez AI Mistrza Gry.
 
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/Azya420/AIGMV2)
+
 ## Uruchomienie
 
 Projekt jest statyczny i nie wymaga instalowania zależności. Otwórz `index.html` w przeglądarce.
 
 ## Publikacja na Render
 
-1. W panelu Render wybierz **New > Static Site**.
-2. Połącz repozytorium `Azya420/AIGMV2`.
-3. Render odczyta ustawienia z pliku `render.yaml`.
-4. Zatwierdź tworzenie strony.
+Kliknij przycisk **Deploy to Render** powyżej, zaloguj się i zatwierdź utworzenie usługi. Render odczyta ustawienia z pliku `render.yaml`.
 
 Każda kolejna zmiana w gałęzi `main` uruchomi automatyczne wdrożenie.
 
