@@ -8,10 +8,24 @@ const PATCH_FLAG = Symbol.for("aigmv2.guestEntryPatched");
 let cachedSource = null;
 let cachedHtml = null;
 
-function replaceRequired(source, searchValue, replacement, label) {
-  const updated = source.replace(searchValue, replacement);
-  if (updated === source) console.warn(`[AIGMV2 guest flow] Nie zastosowano poprawki: ${label}`);
-  return updated;
+const PENDING_DECLARATION = '    let pendingScreen = "menu";';
+const PROTECTED_SCREEN_FUNCTION = `    async function openProtectedScreen(name) {
+      pendingScreen = name;
+      if (await ensureAccount()) {
+        pendingScreen = "menu";
+        showScreen(name);
+        return;
+      }
+      setAuthMode("login");
+      showScreen("auth");
+    }`;
+
+function keepSingleOccurrence(source, value) {
+  const firstIndex = source.indexOf(value);
+  if (firstIndex < 0) return source;
+  const beforeAndFirst = source.slice(0, firstIndex + value.length);
+  const afterFirst = source.slice(firstIndex + value.length).split(value).join("");
+  return beforeAndFirst + afterFirst;
 }
 
 function transformIndexHtml(source) {
@@ -19,103 +33,44 @@ function transformIndexHtml(source) {
 
   let html = source;
 
-  html = replaceRequired(
-    html,
-    '<span class="viz-badge">◆ <span id="account-tokens">8</span> tokenów</span>',
-    '<span class="viz-badge">◆ <span id="account-tokens">—</span> tokenów</span>',
-    "saldo gościa"
-  );
+  // The repository now contains the guest flow directly. This preload only
+  // normalizes older deployments and removes duplicate patches safely.
+  html = html
+    .replace(
+      '<span class="viz-badge">◆ <span id="account-tokens">8</span> tokenów</span>',
+      '<span class="viz-badge">◆ <span id="account-tokens">—</span> tokenów</span>'
+    )
+    .replace(
+      /<section class="app-screen" data-screen="auth"(?: hidden)?>/,
+      '<section class="app-screen" data-screen="auth" hidden>'
+    )
+    .replace(
+      /<section class="app-screen" data-screen="menu"(?: hidden)?>/,
+      '<section class="app-screen" data-screen="menu">'
+    );
 
-  html = replaceRequired(
-    html,
-    '<section class="app-screen" data-screen="auth">',
-    '<section class="app-screen" data-screen="auth" hidden>',
-    "ukrycie logowania na wejściu"
-  );
+  html = keepSingleOccurrence(html, PENDING_DECLARATION);
+  html = keepSingleOccurrence(html, PROTECTED_SCREEN_FUNCTION);
 
-  html = replaceRequired(
-    html,
-    '<section class="app-screen" data-screen="menu" hidden>',
-    '<section class="app-screen" data-screen="menu">',
-    "pokazanie menu na wejściu"
-  );
+  // If an older index.html is deployed, add the missing declaration/function
+  // once, without ever duplicating them on subsequent requests.
+  if (!html.includes(PENDING_DECLARATION)) {
+    html = html.replace(
+      "    let accountLoadPromise = null;",
+      `    let accountLoadPromise = null;\n${PENDING_DECLARATION}`
+    );
+  }
 
-  html = replaceRequired(
-    html,
-    '<div class="app-header"><div><h1>Twoje konto gracza</h1><div class="app-muted">Zaloguj się, aby grać online i zachować tokeny.</div></div></div>',
-    '<div class="app-header"><div><h1>Twoje konto gracza</h1><div class="app-muted">Zaloguj się lub utwórz konto, aby rozpocząć albo dołączyć do kampanii.</div></div><button class="btn" type="button" data-go="menu">← Wróć</button></div>',
-    "przycisk powrotu z logowania"
-  );
-
-  html = replaceRequired(
-    html,
-    '    let accountLoadPromise = null;\n',
-    '    let accountLoadPromise = null;\n    let pendingScreen = "menu";\n',
-    "zapamiętanie wybranej akcji"
-  );
-
-  html = replaceRequired(
-    html,
-    '      if (!authSession?.access_token) { showScreen("auth"); return false; }',
-    '      if (!authSession?.access_token) return false;',
-    "ciche sprawdzanie sesji"
-  );
-
-  html = replaceRequired(
-    html,
-    '        if (!authSession?.refresh_token) { showScreen("auth"); return false; }',
-    '        if (!authSession?.refresh_token) {\n          localStorage.removeItem("aigmv2-auth-session");\n          authSession = null;\n          document.querySelector("#account-name").textContent = "Gość";\n          document.querySelector("#account-tokens").textContent = "—";\n          document.querySelector("#logout-button").hidden = true;\n          return false;\n        }',
-    "obsługa wygasłej sesji bez wymuszania logowania"
-  );
-
-  html = replaceRequired(
-    html,
-    '          localStorage.removeItem("aigmv2-auth-session");\n          authSession = null;\n          showScreen("auth");\n          return false;',
-    '          localStorage.removeItem("aigmv2-auth-session");\n          authSession = null;\n          document.querySelector("#account-name").textContent = "Gość";\n          document.querySelector("#account-tokens").textContent = "—";\n          document.querySelector("#logout-button").hidden = true;\n          return false;',
-    "odświeżenie wygasłej sesji"
-  );
-
-  html = replaceRequired(
-    html,
-    '    function ensureAccount() {\n      if (!accountLoadPromise) accountLoadPromise = loadAccount().finally(function () { accountLoadPromise = null; });\n      return accountLoadPromise;\n    }',
-    '    function ensureAccount() {\n      if (!accountLoadPromise) accountLoadPromise = loadAccount().finally(function () { accountLoadPromise = null; });\n      return accountLoadPromise;\n    }\n\n    async function openProtectedScreen(name) {\n      pendingScreen = name;\n      if (await ensureAccount()) {\n        pendingScreen = "menu";\n        showScreen(name);\n        return;\n      }\n      setAuthMode("login");\n      showScreen("auth");\n    }',
-    "ochrona ekranów kampanii"
-  );
-
-  html = replaceRequired(
-    html,
-    '        await ensureAccount();\n        showScreen("menu");',
-    '        if (!(await ensureAccount())) throw new Error("Nie udało się wczytać konta.");\n        const destination = pendingScreen || "menu";\n        pendingScreen = "menu";\n        showScreen(destination);',
-    "powrót do wybranej akcji po logowaniu"
-  );
-
-  html = replaceRequired(
-    html,
-    '      document.querySelector("#account-name").textContent = "Gość";\n      document.querySelector("#logout-button").hidden = true;\n      showScreen("auth");',
-    '      document.querySelector("#account-name").textContent = "Gość";\n      document.querySelector("#account-tokens").textContent = "—";\n      document.querySelector("#logout-button").hidden = true;\n      pendingScreen = "menu";\n      showScreen("menu");',
-    "powrót do menu po wylogowaniu"
-  );
-
-  html = replaceRequired(
-    html,
-    '      if (goButton) {\n        if (goButton.dataset.go === "menu" && currentRoom && socket) {',
-    '      if (goButton) {\n        const destination = goButton.dataset.go;\n        if (["setup", "join", "saves"].includes(destination)) {\n          event.preventDefault();\n          openProtectedScreen(destination);\n          return;\n        }\n        if (destination === "menu") pendingScreen = "menu";\n        if (destination === "menu" && currentRoom && socket) {',
-    "logowanie dopiero po wyborze kampanii"
-  );
-
-  html = replaceRequired(
-    html,
-    '        showScreen(goButton.dataset.go);',
-    '        showScreen(destination);',
-    "nawigacja po ekranach"
-  );
-
-  html = replaceRequired(
-    html,
-    '    ensureAccount().then(function (loggedIn) { if (loggedIn && !currentRoom) showScreen("menu"); });',
-    '    document.querySelector("#account-tokens").textContent = authSession?.access_token ? document.querySelector("#account-tokens").textContent : "—";\n    showScreen("menu");\n    ensureAccount().then(function (loggedIn) { if (loggedIn && !currentRoom) showScreen("menu"); });',
-    "start aplikacji jako gość"
-  );
+  if (!html.includes(PROTECTED_SCREEN_FUNCTION)) {
+    const ensureAccountBlock = `    function ensureAccount() {
+      if (!accountLoadPromise) accountLoadPromise = loadAccount().finally(function () { accountLoadPromise = null; });
+      return accountLoadPromise;
+    }`;
+    html = html.replace(
+      ensureAccountBlock,
+      `${ensureAccountBlock}\n\n${PROTECTED_SCREEN_FUNCTION}`
+    );
+  }
 
   cachedSource = source;
   cachedHtml = html;
@@ -158,7 +113,7 @@ if (!express.response[PATCH_FLAG]) {
   };
 
   express.response[PATCH_FLAG] = true;
-  console.log("[AIGMV2 guest flow] menu dostępne przed logowaniem; konto wymagane przy wejściu do kampanii.");
+  console.log("[AIGMV2 guest flow] menu gościa aktywne; duplikaty skryptu są usuwane.");
 }
 
 module.exports = { transformIndexHtml };
