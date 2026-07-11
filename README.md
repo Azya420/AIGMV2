@@ -16,6 +16,11 @@ Każda kolejna zmiana w gałęzi `main` uruchomi automatyczne wdrożenie.
 
 ## Obecny zakres
 
+- ekran startowy i ustawienia,
+- tworzenie nowej kampanii oraz dołączanie sześcioliterowym kodem,
+- konfiguracja liczby graczy, trudności, postaci i rodzaju kampanii,
+- lobby drużyny i kreator postaci,
+- lista zapisanych kampanii,
 - przykładowa kampania składająca się z pięciu scen,
 - pytania do całej drużyny i konkretnych graczy,
 - bezpłatne gotowe odpowiedzi,
