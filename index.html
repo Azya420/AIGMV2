@@ -638,6 +638,7 @@
     let authSession = null;
     let accountLoadPromise = null;
     let pendingScreen = "menu";
+    let pendingScreen = "menu";
     try { authSession = JSON.parse(localStorage.getItem("aigmv2-auth-session") || "null"); } catch {}
     window.getAccessToken = function () { return authSession?.access_token || ""; };
 
@@ -696,7 +697,9 @@
         } catch {
           localStorage.removeItem("aigmv2-auth-session");
           authSession = null;
-          showScreen("auth");
+          document.querySelector("#account-name").textContent = "Gość";
+          document.querySelector("#account-tokens").textContent = "—";
+          document.querySelector("#logout-button").hidden = true;
           return false;
         }
       }
@@ -705,6 +708,17 @@
     function ensureAccount() {
       if (!accountLoadPromise) accountLoadPromise = loadAccount().finally(function () { accountLoadPromise = null; });
       return accountLoadPromise;
+    }
+
+    async function openProtectedScreen(name) {
+      pendingScreen = name;
+      if (await ensureAccount()) {
+        pendingScreen = "menu";
+        showScreen(name);
+        return;
+      }
+      setAuthMode("login");
+      showScreen("auth");
     }
 
     async function openProtectedScreen(name) {
@@ -806,7 +820,7 @@
           window.currentRoomCode = null;
           localStorage.removeItem("aigmv2-room-code");
         }
-        showScreen(goButton.dataset.go);
+        showScreen(destination);
       }
     });
 
@@ -938,6 +952,8 @@
         }
       }, 20000);
     }
+    document.querySelector("#account-tokens").textContent = authSession?.access_token ? document.querySelector("#account-tokens").textContent : "—";
+    showScreen("menu");
     document.querySelector("#account-tokens").textContent = authSession?.access_token ? document.querySelector("#account-tokens").textContent : "—";
     showScreen("menu");
     ensureAccount().then(function (loggedIn) { if (loggedIn && !currentRoom) showScreen("menu"); });
