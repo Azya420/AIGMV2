@@ -1,0 +1,21 @@
+{
+  "name": "aigmv2",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Polska gra multiplayer z AI Mistrzem Gry",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "check": "node --check server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "socket.io-client": "^4.8.1"
+  }
+}

@@ -73,6 +73,7 @@
 <header class="app-topbar">
   <div class="app-brand"><span class="app-brand-mark">✦</span><span>AI MISTRZ GRY</span></div>
   <div class="viz-row">
+    <span class="viz-badge" id="connection-state">○ Łączenie…</span>
     <span class="viz-badge">◆ <span id="account-tokens">8</span> tokenów</span>
     <button type="button" class="btn" data-go="settings">⚙ Ustawienia</button>
   </div>
@@ -101,6 +102,9 @@
     <div class="app-header"><div><h1>Nowa kampania</h1><div class="app-muted">Ustaw zasady przed utworzeniem pokoju.</div></div><button class="btn" type="button" data-go="menu">← Menu</button></div>
     <div class="app-panel">
       <div class="app-form-grid">
+        <label class="app-field">Twoja nazwa
+          <input id="setup-player-name" value="Gracz 1" maxlength="24">
+        </label>
         <label class="app-field">Liczba graczy
           <select id="setup-player-count"><option>1</option><option>2</option><option>3</option><option selected>4</option><option>5</option><option>6</option></select>
         </label>
@@ -129,6 +133,7 @@
   <section class="app-screen" data-screen="join" hidden>
     <div class="app-header"><div><h1>Dołącz do drużyny</h1><div class="app-muted">Wpisz sześcioliterowy kod otrzymany od gospodarza.</div></div><button class="btn" type="button" data-go="menu">← Menu</button></div>
     <div class="app-panel" style="max-width:560px">
+      <label class="app-field">Twoja nazwa<input id="join-player-name" value="Gracz 2" maxlength="24"></label>
       <label class="app-field">Kod pokoju<input id="join-code" maxlength="6" placeholder="NP. DZ7K9Q" autocomplete="off"></label>
       <div class="app-actions"><button type="button" class="btn btn-primary" id="join-room">Dołącz</button></div>
       <div class="app-notice" id="join-notice" aria-live="polite"></div>
@@ -183,9 +188,9 @@
   <section class="app-screen" data-screen="settings" hidden>
     <div class="app-header"><div><h1>Ustawienia</h1><div class="app-muted">Dostosuj głos i sposób odpowiadania.</div></div><button class="btn" type="button" data-go="menu">← Menu</button></div>
     <div class="app-panel app-form-grid">
-      <label class="app-field">Mikrofon podczas tury<select><option selected>Uruchamiany przyciskiem</option><option>Automatycznie</option></select></label>
-      <label class="app-field">Głos Mistrza Gry<select><option selected>Głęboki narrator</option><option>Spokojny narrator</option><option>Bez głosu</option></select></label>
-      <label class="app-field">Szybkość narracji<select><option>Wolna</option><option selected>Normalna</option><option>Szybka</option></select></label>
+      <label class="app-field">Mikrofon podczas tury<select id="setting-microphone"><option selected>Uruchamiany przyciskiem</option><option>Automatycznie</option></select></label>
+      <label class="app-field">Głos Mistrza Gry<select id="setting-voice"><option selected>Polski narrator</option><option>Bez głosu</option></select></label>
+      <label class="app-field">Szybkość narracji<select id="setting-speech-rate"><option value="0.78">Wolna</option><option value="0.95" selected>Normalna</option><option value="1.12">Szybka</option></select></label>
       <label class="app-field">Rozmiar tekstu<select><option>Mały</option><option selected>Standardowy</option><option>Duży</option></select></label>
     </div>
   </section>
@@ -242,13 +247,14 @@
     </div>
     <div class="viz-row">
       <span class="viz-badge" id="gm-tokens">◆ 8 tokenów</span>
-      <span class="viz-badge">● 4 graczy online</span>
+      <span class="viz-badge" id="gm-online">● 1 gracz online</span>
+      <button type="button" class="btn" id="gm-speech-toggle">🔊 Głos włączony</button>
       <button type="button" class="btn" data-go="menu">Zapisz i wyjdź</button>
     </div>
   </header>
 
   <div class="gm-layout">
-    <main class="gm-stage">
+    <div class="gm-stage">
       <article class="gm-scene" aria-live="polite">
         <div class="gm-meta">
           <span class="viz-badge" id="gm-chapter">Scena 1 z 5</span>
@@ -276,7 +282,7 @@
         </div>
         <div class="gm-toast text-small" id="gm-toast" aria-live="polite"></div>
       </article>
-    </main>
+    </div>
 
     <aside class="gm-side" aria-label="Panel sesji">
       <section>
@@ -299,6 +305,8 @@
     </aside>
   </div>
 
+  <script src="/socket.io/socket.io.js"></script>
+  <script>window.gameSocket = typeof io === "function" ? io() : null;</script>
   <script>
     (function () {
       const root = document.getElementById("ai-gm-prototype");
@@ -311,14 +319,14 @@
         },
         {
           target: "Pytanie do Mai",
-          narrative: "W błocie odnajdujecie srebrny medalion z symbolem pękniętego księżyca. Gdy Maja go dotyka, słyszy szept: «Nie pozwól mu otworzyć bramy». Pozostali słyszą tylko wiatr.",
-          question: "Maju, komu pokazujesz medalion?",
+          narrative: "W błocie odnajdujecie srebrny medalion z symbolem pękniętego księżyca. Gdy wskazany bohater go dotyka, słyszy szept: «Nie pozwól mu otworzyć bramy». Pozostali słyszą tylko wiatr.",
+          question: "Komu pokazujesz medalion?",
           choices: ["Całej drużynie", "Tylko Olafowi", "Nikomu — ukrywam go", "Oddaję go kapłance"]
         },
         {
           target: "Pytanie do Olafa",
-          narrative: "Przed wejściem do kopalni stoi kamienny strażnik. Jego oczy rozpalają się, gdy Olaf podchodzi bliżej. «Jedno wspomnienie za jedno przejście» — mówi posąg.",
-          question: "Olafie, jakie wspomnienie jesteś gotów poświęcić?",
+          narrative: "Przed wejściem do kopalni stoi kamienny strażnik. Jego oczy rozpalają się, gdy wskazany bohater podchodzi bliżej. «Jedno wspomnienie za jedno przejście» — mówi posąg.",
+          question: "Jakie wspomnienie jesteś gotów poświęcić?",
           choices: ["Pierwsze zwycięstwo", "Twarz dawnego mistrza", "Obietnicę z dzieciństwa", "Odmawiam zapłaty"]
         },
         {
@@ -334,7 +342,7 @@
           choices: ["Rozpocznij Rozdział II", "Zapisz kampanię", "Zobacz podsumowanie", "Wróć do lobby"]
         }
       ];
-      const players = [
+      let players = [
         { name: "Maja", role: "Łowczyni", initials: "M" },
         { name: "Olaf", role: "Wojownik", initials: "O" },
         { name: "Lena", role: "Alchemiczka", initials: "L" },
@@ -343,13 +351,19 @@
       let sceneIndex = 0;
       let tokens = 8;
       let listening = false;
+      let lastSpokenScene = -1;
+      let speechEnabled = true;
+      let currentGameState = null;
+      const socket = window.gameSocket;
 
       const choicesEl = root.querySelector("#gm-choices");
       const customEl = root.querySelector("#gm-custom");
       const customText = root.querySelector("#gm-custom-text");
       const voiceBtn = root.querySelector("#gm-voice");
+      const speechToggle = root.querySelector("#gm-speech-toggle");
 
       function activeName() {
+        if (currentGameState?.targetMode === "player") return currentGameState.targetPlayerName;
         const target = scenes[sceneIndex].target;
         const found = players.find(function (player) { return target.includes(player.name); });
         return found ? found.name : "";
@@ -358,20 +372,40 @@
       function renderPlayers() {
         const active = activeName();
         root.querySelector("#gm-players").innerHTML = players.map(function (player) {
-          return '<div class="gm-player' + (active === player.name ? ' is-active' : '') + '">' +
+          const isActive = currentGameState?.targetMode === "player" ? currentGameState.targetPlayerId === player.id : active === player.name;
+          return '<div class="gm-player' + (isActive ? ' is-active' : '') + '">' +
             '<span class="gm-avatar">' + player.initials + '</span>' +
             '<span><span class="gm-player-name">' + player.name + '</span><br><span class="gm-player-role text-small">' + player.role + '</span></span>' +
             '<span class="gm-dot" aria-label="online"></span></div>';
         }).join("");
       }
 
+      function speakScene(force) {
+        if (!speechEnabled || !window.speechSynthesis || document.querySelector("#setting-voice").value === "Bez głosu") return;
+        if (!force && lastSpokenScene === sceneIndex) return;
+        const scene = scenes[sceneIndex];
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(scene.narrative + " " + scene.question);
+        utterance.lang = "pl-PL";
+        utterance.rate = Number(document.querySelector("#setting-speech-rate").value) || 0.95;
+        const polishVoice = window.speechSynthesis.getVoices().find(function (voice) { return voice.lang.toLowerCase().startsWith("pl"); });
+        if (polishVoice) utterance.voice = polishVoice;
+        window.speechSynthesis.speak(utterance);
+        lastSpokenScene = sceneIndex;
+      }
+
       function renderScene() {
         const scene = scenes[sceneIndex];
+        const myId = socket?.id;
+        const myTurn = !currentGameState || currentGameState.requiredPlayerIds.includes(myId);
+        const alreadyAnswered = Boolean(currentGameState?.respondedPlayerIds.includes(myId));
+        const interactionLocked = !myTurn || alreadyAnswered;
         root.querySelector("#gm-chapter").textContent = "Scena " + (sceneIndex + 1) + " z " + scenes.length;
-        root.querySelector("#gm-target").textContent = scene.target;
+        root.querySelector("#gm-target").textContent = currentGameState?.targetMode === "player" ? "Pytanie do: " + currentGameState.targetPlayerName : "Pytanie do wszystkich";
         root.querySelector("#gm-narrative").textContent = scene.narrative;
         root.querySelector("#gm-question").textContent = scene.question;
         root.querySelector("#gm-tokens").textContent = "◆ " + tokens + " tokenów";
+        root.querySelector("#gm-online").textContent = "● " + players.length + (players.length === 1 ? " gracz online" : " graczy online");
         document.querySelector("#account-tokens").textContent = tokens;
         const progress = Math.round(((sceneIndex + 1) / scenes.length) * 100);
         root.querySelector("#gm-progress-label").textContent = progress + "%";
@@ -381,6 +415,7 @@
           const button = document.createElement("button");
           button.type = "button";
           button.className = "btn gm-choice";
+          button.disabled = interactionLocked;
           button.innerHTML = "<span>" + String.fromCharCode(65 + index) + ". " + choice + "</span><small>Gotowa odpowiedź · 0 tokenów</small>";
           button.addEventListener("click", function () { choose(choice); });
           choicesEl.appendChild(button);
@@ -390,8 +425,10 @@
         listening = false;
         voiceBtn.classList.remove("gm-listening");
         voiceBtn.textContent = "🎙 Powiedz";
-        root.querySelector("#gm-toast").textContent = "";
+        root.querySelector("#gm-custom-open").disabled = interactionLocked;
+        root.querySelector("#gm-toast").textContent = alreadyAnswered ? "Twoja odpowiedź została zapisana. Czekamy na pozostałych graczy…" : (!myTurn ? "Mistrz Gry czeka teraz na odpowiedź wskazanego gracza." : "");
         renderPlayers();
+        if (!root.hidden) window.setTimeout(function () { speakScene(false); }, 120);
       }
 
       function addLog(text) {
@@ -403,12 +440,18 @@
         while (log.children.length > 3) log.removeChild(log.lastChild);
       }
 
-      function choose(choice) {
+      function choose(choice, custom) {
         addLog("Wybrano: " + choice + ".");
-        root.querySelector("#gm-toast").textContent = "AI Mistrz Gry uwzględnia decyzję i tworzy dalszy ciąg…";
+        root.querySelector("#gm-toast").textContent = "Wysyłanie decyzji do całej drużyny…";
+        if (socket && socket.connected && window.currentRoomCode) {
+          socket.emit("game:choice", { choice: choice, custom: Boolean(custom) }, function (result) {
+            if (!result?.ok) root.querySelector("#gm-toast").textContent = result?.error || "Nie udało się wysłać decyzji.";
+          });
+          return;
+        }
+        if (custom) tokens -= 1;
         window.setTimeout(function () {
-          if (sceneIndex < scenes.length - 1) sceneIndex += 1;
-          else sceneIndex = 0;
+          sceneIndex = (sceneIndex + 1) % scenes.length;
           renderScene();
         }, 650);
       }
@@ -428,8 +471,7 @@
           root.querySelector("#gm-toast").textContent = "Drużyna nie ma już tokenów.";
           return;
         }
-        tokens -= 1;
-        choose(answer);
+        choose(answer, true);
       });
 
       voiceBtn.addEventListener("click", function () {
@@ -437,16 +479,70 @@
           root.querySelector("#gm-toast").textContent = "Drużyna nie ma już tokenów na własną odpowiedź.";
           return;
         }
-        listening = !listening;
-        voiceBtn.classList.toggle("gm-listening", listening);
-        voiceBtn.textContent = listening ? "● Słucham…" : "🎙 Powiedz";
-        if (listening) {
-          root.querySelector("#gm-toast").textContent = "Mikrofon aktywny dla: " + (activeName() || "całej drużyny") + ". Kliknij ponownie, aby zakończyć.";
-        } else {
-          customText.value = "Sprawdzamy inne rozwiązanie i działamy według własnego planu.";
-          root.querySelector("#gm-toast").textContent = "Odpowiedź głosowa została zamieniona na tekst. Możesz ją poprawić przed zatwierdzeniem.";
+        const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!Recognition) {
+          root.querySelector("#gm-toast").textContent = "Ta przeglądarka nie obsługuje rozpoznawania mowy. Możesz wpisać odpowiedź.";
+          return;
         }
+        const recognition = new Recognition();
+        recognition.lang = "pl-PL";
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+        listening = true;
+        voiceBtn.classList.add("gm-listening");
+        voiceBtn.textContent = "● Słucham…";
+        root.querySelector("#gm-toast").textContent = "Mikrofon aktywny dla: " + (activeName() || "całej drużyny") + ".";
+        recognition.onresult = function (event) {
+          customText.value = event.results[0][0].transcript;
+          root.querySelector("#gm-toast").textContent = "Sprawdź transkrypcję i zatwierdź odpowiedź za 1 token.";
+        };
+        recognition.onerror = function () {
+          root.querySelector("#gm-toast").textContent = "Nie udało się rozpoznać wypowiedzi. Spróbuj ponownie lub wpisz tekst.";
+        };
+        recognition.onend = function () {
+          listening = false;
+          voiceBtn.classList.remove("gm-listening");
+          voiceBtn.textContent = "🎙 Powiedz";
+        };
+        recognition.start();
       });
+
+      speechToggle.addEventListener("click", function () {
+        speechEnabled = !speechEnabled;
+        speechToggle.textContent = speechEnabled ? "🔊 Głos włączony" : "🔇 Głos wyłączony";
+        if (speechEnabled) speakScene(true);
+        else if (window.speechSynthesis) window.speechSynthesis.cancel();
+      });
+
+      root.addEventListener("aigmv2:speak", function () { speakScene(true); });
+
+      window.applyGameState = function (state, start) {
+        currentGameState = state;
+        sceneIndex = Number(state.sceneIndex) || 0;
+        tokens = Number.isFinite(state.tokens) ? state.tokens : tokens;
+        players = state.players.map(function (player) {
+          const displayName = player.character?.name || player.name;
+          return {
+            id: player.id,
+            name: displayName,
+            role: player.character?.characterClass || "Gracz",
+            initials: displayName.charAt(0).toUpperCase()
+          };
+        });
+        if (state.settings?.campaign) root.querySelector(".gm-title").textContent = state.settings.campaign;
+        if (state.lastDecision) addLog(state.lastDecision.playerName + ": " + state.lastDecision.choice);
+        if (start) lastSpokenScene = -1;
+        renderScene();
+      };
+
+      if (socket) {
+        socket.on("game:start", function (state) {
+          window.currentRoomCode = state.code;
+          if (window.showAppScreen) window.showAppScreen("game");
+          window.applyGameState(state, true);
+        });
+        socket.on("game:update", function (state) { window.applyGameState(state, false); });
+      }
 
       renderScene();
     }());
@@ -457,34 +553,47 @@
 <script>
   (function () {
     const screens = Array.from(document.querySelectorAll("[data-screen]"));
+    const socket = window.gameSocket;
     let selectedCampaign = "Cień nad Żelazną Doliną";
     let selectedClass = "Strażnik";
-    const partyTemplates = [
-      { initial: "M", name: "Maja", role: "Łowczyni" },
-      { initial: "O", name: "Olaf", role: "Wojownik" },
-      { initial: "L", name: "Lena", role: "Alchemiczka" },
-      { initial: "B", name: "Bartek", role: "Bard" },
-      { initial: "K", name: "Kornel", role: "Mag" }
-    ];
+    let currentRoom = null;
+    let activePlayerName = "Gracz 1";
 
-    function renderLobbyPlayers(count) {
-      const host = '<div class="player-row"><span class="player-avatar">G</span><span><strong>Gracz 1</strong><br><span class="app-muted text-small" id="host-character">Tworzy postać</span></span><span class="viz-badge">Gospodarz</span></div>';
-      const guests = partyTemplates.slice(0, Math.max(0, count - 1)).map(function (player) {
-        return '<div class="player-row"><span class="player-avatar">' + player.initial + '</span><span><strong>' + player.name + '</strong><br><span class="app-muted text-small">' + player.role + ' · gotowy</span></span><span class="status-dot" aria-label="gotowy"></span></div>';
+    function renderLobby(room) {
+      currentRoom = room;
+      window.currentRoomCode = room.code;
+      document.querySelector("#room-code").textContent = room.code;
+      document.querySelector("#lobby-campaign").textContent = room.settings.campaign + " · " + room.settings.difficulty;
+      document.querySelector("#lobby-players").innerHTML = room.players.map(function (player) {
+        const isHost = player.id === room.hostId;
+        const character = player.character ? player.character.name + " · " + player.character.characterClass : "Tworzy postać";
+        return '<div class="player-row"><span class="player-avatar">' + player.name.charAt(0).toUpperCase() + '</span><span><strong>' + player.name + '</strong><br><span class="app-muted text-small">' + character + '</span></span>' + (isHost ? '<span class="viz-badge">Gospodarz</span>' : '<span class="status-dot" aria-label="online"></span>') + '</div>';
       }).join("");
-      document.querySelector("#lobby-players").innerHTML = host + guests;
+      const startButton = document.querySelector("#start-game");
+      const everyoneReady = room.settings.characterMode !== "Tworzone przez graczy" || room.players.every((player) => player.ready);
+      startButton.disabled = !socket || room.hostId !== socket.id || !everyoneReady;
+      startButton.textContent = room.hostId !== socket?.id ? "Czekamy na gospodarza" : (everyoneReady ? "Rozpocznij kampanię" : "Czekamy na postacie");
     }
 
     function showScreen(name) {
       screens.forEach(function (screen) {
         screen.hidden = screen.dataset.screen !== name;
       });
+      if (name === "game") document.querySelector("#ai-gm-prototype").dispatchEvent(new Event("aigmv2:speak"));
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
+    window.showAppScreen = showScreen;
 
     document.addEventListener("click", function (event) {
       const goButton = event.target.closest("[data-go]");
-      if (goButton) showScreen(goButton.dataset.go);
+      if (goButton) {
+        if (goButton.dataset.go === "menu" && currentRoom && socket) {
+          socket.emit("room:leave");
+          currentRoom = null;
+          window.currentRoomCode = null;
+        }
+        showScreen(goButton.dataset.go);
+      }
     });
 
     document.querySelectorAll("#campaign-options .app-option").forEach(function (button) {
@@ -504,13 +613,21 @@
     });
 
     document.querySelector("#create-room").addEventListener("click", function () {
-      const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-      let code = "";
-      for (let index = 0; index < 6; index += 1) code += chars[Math.floor(Math.random() * chars.length)];
-      document.querySelector("#room-code").textContent = code;
-      document.querySelector("#lobby-campaign").textContent = selectedCampaign + " · " + document.querySelector("#setup-difficulty").value;
-      renderLobbyPlayers(Number(document.querySelector("#setup-player-count").value));
-      showScreen("lobby");
+      if (!socket?.connected) return alert("Brak połączenia z serwerem multiplayer. Spróbuj ponownie za chwilę.");
+      socket.emit("room:create", {
+        playerName: document.querySelector("#setup-player-name").value,
+        settings: {
+          campaign: selectedCampaign,
+          difficulty: document.querySelector("#setup-difficulty").value,
+          maxPlayers: Number(document.querySelector("#setup-player-count").value),
+          characterMode: document.querySelector("#setup-characters").value
+        }
+      }, function (result) {
+        if (!result?.ok) return alert(result?.error || "Nie udało się utworzyć pokoju.");
+        activePlayerName = document.querySelector("#setup-player-name").value.trim() || "Gracz 1";
+        renderLobby(result.room);
+        showScreen("lobby");
+      });
     });
 
     document.querySelector("#join-room").addEventListener("click", function () {
@@ -520,10 +637,20 @@
         document.querySelector("#join-notice").textContent = "Kod powinien mieć dokładnie 6 znaków.";
         return;
       }
-      document.querySelector("#room-code").textContent = code;
-      renderLobbyPlayers(4);
-      document.querySelector("#join-notice").textContent = "";
-      showScreen("lobby");
+      if (!socket?.connected) {
+        document.querySelector("#join-notice").textContent = "Brak połączenia z serwerem multiplayer.";
+        return;
+      }
+      socket.emit("room:join", { code: code, playerName: document.querySelector("#join-player-name").value }, function (result) {
+        if (!result?.ok) {
+          document.querySelector("#join-notice").textContent = result?.error || "Nie udało się dołączyć.";
+          return;
+        }
+        activePlayerName = document.querySelector("#join-player-name").value.trim() || "Gracz";
+        document.querySelector("#join-notice").textContent = "";
+        renderLobby(result.room);
+        showScreen("lobby");
+      });
     });
 
     document.querySelector("#join-code").addEventListener("input", function (event) {
@@ -532,15 +659,40 @@
 
     document.querySelector("#save-character").addEventListener("click", function () {
       const name = document.querySelector("#character-name").value.trim() || "Bez imienia";
-      document.querySelector("#host-character").textContent = name + " · " + selectedClass + " · gotowy";
-      showScreen("lobby");
+      if (!socket?.connected || !currentRoom) return alert("Najpierw dołącz do pokoju.");
+      socket.emit("player:update", {
+        playerName: activePlayerName,
+        character: {
+          name: name,
+          characterClass: selectedClass,
+          origin: document.querySelector("#character-origin").value,
+          story: document.querySelector("#character-story").value
+        }
+      }, function (result) {
+        if (!result?.ok) return alert(result?.error || "Nie udało się zapisać postaci.");
+        showScreen("lobby");
+      });
     });
 
     document.querySelector("#start-game").addEventListener("click", function () {
-      showScreen("game");
+      if (!socket?.connected || !currentRoom) return;
+      socket.emit("room:start", {}, function (result) {
+        if (!result?.ok) alert(result?.error || "Nie udało się rozpocząć kampanii.");
+      });
     });
 
-    renderLobbyPlayers(4);
+    if (socket) {
+      const connectionState = document.querySelector("#connection-state");
+      socket.on("connect", function () {
+        if (connectionState) connectionState.textContent = "● Multiplayer online";
+      });
+      socket.on("disconnect", function () {
+        if (connectionState) connectionState.textContent = "○ Łączenie…";
+      });
+      socket.on("room:update", function (room) {
+        renderLobby(room);
+      });
+    }
     showScreen("menu");
   }());
 </script>
