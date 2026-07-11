@@ -75,7 +75,7 @@
   <div class="app-brand"><span class="app-brand-mark">✦</span><span>AI MISTRZ GRY</span></div>
   <div class="viz-row">
     <span class="viz-badge" id="connection-state">○ Łączenie…</span>
-    <span class="viz-badge">◆ <span id="account-tokens">8</span> tokenów</span>
+    <span class="viz-badge">◆ <span id="account-tokens">—</span> tokenów</span>
     <span class="viz-badge" id="account-name">Gość</span>
     <button type="button" class="btn" id="logout-button" hidden>Wyloguj</button>
     <button type="button" class="btn" data-go="settings">⚙ Ustawienia</button>
@@ -83,8 +83,8 @@
 </header>
 
 <main class="app-shell">
-  <section class="app-screen" data-screen="auth">
-    <div class="app-header"><div><h1>Twoje konto gracza</h1><div class="app-muted">Zaloguj się, aby grać online i zachować tokeny.</div></div></div>
+  <section class="app-screen" data-screen="auth" hidden>
+    <div class="app-header"><div><h1>Twoje konto gracza</h1><div class="app-muted">Zaloguj się lub utwórz konto, aby rozpocząć albo dołączyć do kampanii.</div></div><button class="btn" type="button" data-go="menu">← Wróć</button></div>
     <div class="app-panel" style="max-width:520px">
       <div class="viz-row" style="margin-bottom:18px">
         <button type="button" class="btn btn-primary" id="auth-login-tab">Logowanie</button>
@@ -99,7 +99,7 @@
     </div>
   </section>
 
-  <section class="app-screen" data-screen="menu" hidden>
+  <section class="app-screen" data-screen="menu">
     <div class="app-hero">
       <div class="app-eyebrow">WSPÓLNA OPOWIEŚĆ · PROWADZONA PRZEZ AI</div>
       <h1>Twoja przygoda zaczyna się tutaj.</h1>
@@ -637,6 +637,7 @@
     let authMode = "login";
     let authSession = null;
     let accountLoadPromise = null;
+    let pendingScreen = "menu";
     try { authSession = JSON.parse(localStorage.getItem("aigmv2-auth-session") || "null"); } catch {}
     window.getAccessToken = function () { return authSession?.access_token || ""; };
 
@@ -672,13 +673,20 @@
     }
 
     async function loadAccount() {
-      if (!authSession?.access_token) { showScreen("auth"); return false; }
+      if (!authSession?.access_token) return false;
       try {
         const account = await apiRequest("/api/account", {}, true);
         applyAccount(account);
         return true;
       } catch {
-        if (!authSession?.refresh_token) { showScreen("auth"); return false; }
+        if (!authSession?.refresh_token) {
+          localStorage.removeItem("aigmv2-auth-session");
+          authSession = null;
+          document.querySelector("#account-name").textContent = "Gość";
+          document.querySelector("#account-tokens").textContent = "—";
+          document.querySelector("#logout-button").hidden = true;
+          return false;
+        }
         try {
           const refreshed = await apiRequest("/api/auth/refresh", { method: "POST", body: JSON.stringify({ refreshToken: authSession.refresh_token }) });
           saveSession(refreshed.session);
@@ -697,6 +705,17 @@
     function ensureAccount() {
       if (!accountLoadPromise) accountLoadPromise = loadAccount().finally(function () { accountLoadPromise = null; });
       return accountLoadPromise;
+    }
+
+    async function openProtectedScreen(name) {
+      pendingScreen = name;
+      if (await ensureAccount()) {
+        pendingScreen = "menu";
+        showScreen(name);
+        return;
+      }
+      setAuthMode("login");
+      showScreen("auth");
     }
 
     function setAuthMode(mode) {
@@ -725,8 +744,10 @@
           saveSession(result.session);
           applyAccount({ profile: result.profile });
         }
-        await ensureAccount();
-        showScreen("menu");
+        if (!(await ensureAccount())) throw new Error("Nie udało się wczytać konta.");
+        const destination = pendingScreen || "menu";
+        pendingScreen = "menu";
+        showScreen(destination);
       } catch (error) { notice.textContent = error.message; }
     });
 
@@ -737,8 +758,10 @@
       localStorage.removeItem("aigmv2-auth-session");
       localStorage.removeItem("aigmv2-room-code");
       document.querySelector("#account-name").textContent = "Gość";
+      document.querySelector("#account-tokens").textContent = "—";
       document.querySelector("#logout-button").hidden = true;
-      showScreen("auth");
+      pendingScreen = "menu";
+      showScreen("menu");
     });
 
     function renderLobby(room) {
@@ -770,7 +793,14 @@
     document.addEventListener("click", function (event) {
       const goButton = event.target.closest("[data-go]");
       if (goButton) {
-        if (goButton.dataset.go === "menu" && currentRoom && socket) {
+        const destination = goButton.dataset.go;
+        if (["setup", "join", "saves"].includes(destination)) {
+          event.preventDefault();
+          openProtectedScreen(destination);
+          return;
+        }
+        if (destination === "menu") pendingScreen = "menu";
+        if (destination === "menu" && currentRoom && socket) {
           socket.emit("room:leave");
           currentRoom = null;
           window.currentRoomCode = null;
@@ -908,6 +938,8 @@
         }
       }, 20000);
     }
+    document.querySelector("#account-tokens").textContent = authSession?.access_token ? document.querySelector("#account-tokens").textContent : "—";
+    showScreen("menu");
     ensureAccount().then(function (loggedIn) { if (loggedIn && !currentRoom) showScreen("menu"); });
   }());
 </script>
