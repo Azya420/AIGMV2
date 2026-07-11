@@ -7,9 +7,11 @@ const filePath = path.join(__dirname, "..", "index.html");
 let html = fs.readFileSync(filePath, "utf8");
 
 function replaceOnce(searchValue, replacement, label) {
-  if (html.includes(replacement)) return;
-  if (!html.includes(searchValue)) throw new Error(`Nie znaleziono fragmentu: ${label}`);
-  html = html.replace(searchValue, replacement);
+  if (html.includes(searchValue)) {
+    html = html.replace(searchValue, replacement);
+    return;
+  }
+  if (!html.includes(replacement)) throw new Error(`Nie znaleziono fragmentu: ${label}`);
 }
 
 replaceOnce(
@@ -54,11 +56,9 @@ replaceOnce(
   "brak refresh tokena"
 );
 
-replaceOnce(
-  '          localStorage.removeItem("aigmv2-auth-session");\n          authSession = null;\n          showScreen("auth");\n          return false;',
-  '          localStorage.removeItem("aigmv2-auth-session");\n          authSession = null;\n          document.querySelector("#account-name").textContent = "Gość";\n          document.querySelector("#account-tokens").textContent = "—";\n          document.querySelector("#logout-button").hidden = true;\n          return false;',
-  "wygasła sesja"
-);
+const staleRefreshFailure = '          localStorage.removeItem("aigmv2-auth-session");\n          authSession = null;\n          showScreen("auth");\n          return false;';
+const silentRefreshFailure = '          localStorage.removeItem("aigmv2-auth-session");\n          authSession = null;\n          document.querySelector("#account-name").textContent = "Gość";\n          document.querySelector("#account-tokens").textContent = "—";\n          document.querySelector("#logout-button").hidden = true;\n          return false;';
+if (html.includes(staleRefreshFailure)) html = html.replace(staleRefreshFailure, silentRefreshFailure);
 
 replaceOnce(
   '    function ensureAccount() {\n      if (!accountLoadPromise) accountLoadPromise = loadAccount().finally(function () { accountLoadPromise = null; });\n      return accountLoadPromise;\n    }',
@@ -84,11 +84,9 @@ replaceOnce(
   "ochrona nawigacji"
 );
 
-replaceOnce(
-  '        showScreen(goButton.dataset.go);',
-  '        showScreen(destination);',
-  "nawigacja"
-);
+if (html.includes('        showScreen(goButton.dataset.go);')) {
+  html = html.replace('        showScreen(goButton.dataset.go);', '        showScreen(destination);');
+}
 
 replaceOnce(
   '    ensureAccount().then(function (loggedIn) { if (loggedIn && !currentRoom) showScreen("menu"); });',
