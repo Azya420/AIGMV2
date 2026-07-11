@@ -15,6 +15,19 @@ npm start
 
 Następnie otwórz `http://localhost:3000`.
 
+## Konfiguracja Supabase i głosu
+
+1. Utwórz projekt w Supabase.
+2. W **SQL Editor** uruchom cały plik `supabase.sql`.
+3. W Render dodaj zmienne środowiskowe:
+   - `SUPABASE_URL`
+   - `SUPABASE_ANON_KEY`
+   - `SUPABASE_SERVICE_ROLE_KEY`
+   - `OPENAI_API_KEY`
+4. Nigdy nie wpisuj klucza `service_role` ani klucza OpenAI do `index.html` lub publicznego repozytorium.
+
+Nowe konto otrzymuje 8 tokenów. Własna odpowiedź odejmuje 1 token atomowo w bazie. Narrator korzysta z modelu `gpt-4o-mini-tts` i głosu `cedar`; odtwarzany głos jest generowany przez AI.
+
 ## Publikacja na Render
 
 Kliknij przycisk **Deploy to Render** powyżej, zaloguj się i zatwierdź utworzenie usługi Node.js. Render odczyta ustawienia z pliku `render.yaml`.
@@ -33,6 +46,9 @@ Każda kolejna zmiana w gałęzi `main` uruchomi automatyczne wdrożenie.
 - wspólny stan sceny, tokenów i decyzji na wszystkich urządzeniach,
 - oczekiwanie na wszystkich graczy lub tylko wskazaną osobę,
 - polskie czytanie narracji przez syntezę mowy przeglądarki,
+- naturalniejsza narracja OpenAI TTS z awaryjnym głosem przeglądarki,
+- rejestracja i logowanie przez Supabase Auth,
+- trwałe saldo tokenów chronione przez Row Level Security,
 - głosowa odpowiedź gracza przez rozpoznawanie mowy w obsługiwanych przeglądarkach,
 - lista zapisanych kampanii,
 - przykładowa kampania składająca się z pięciu scen,

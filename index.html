@@ -76,12 +76,30 @@
   <div class="viz-row">
     <span class="viz-badge" id="connection-state">○ Łączenie…</span>
     <span class="viz-badge">◆ <span id="account-tokens">8</span> tokenów</span>
+    <span class="viz-badge" id="account-name">Gość</span>
+    <button type="button" class="btn" id="logout-button" hidden>Wyloguj</button>
     <button type="button" class="btn" data-go="settings">⚙ Ustawienia</button>
   </div>
 </header>
 
 <main class="app-shell">
-  <section class="app-screen" data-screen="menu">
+  <section class="app-screen" data-screen="auth">
+    <div class="app-header"><div><h1>Twoje konto gracza</h1><div class="app-muted">Zaloguj się, aby grać online i zachować tokeny.</div></div></div>
+    <div class="app-panel" style="max-width:520px">
+      <div class="viz-row" style="margin-bottom:18px">
+        <button type="button" class="btn btn-primary" id="auth-login-tab">Logowanie</button>
+        <button type="button" class="btn" id="auth-register-tab">Nowe konto</button>
+      </div>
+      <label class="app-field" id="auth-name-field" hidden>Nazwa gracza<input id="auth-display-name" maxlength="24" placeholder="Np. Wojtek"></label>
+      <label class="app-field">E-mail<input id="auth-email" type="email" autocomplete="email"></label>
+      <label class="app-field">Hasło<input id="auth-password" type="password" minlength="8" autocomplete="current-password"></label>
+      <div class="app-actions"><button type="button" class="btn btn-primary" id="auth-submit">Zaloguj się</button></div>
+      <div class="app-notice" id="auth-notice" aria-live="polite"></div>
+      <p class="text-small app-muted">Głos Mistrza Gry jest generowany przez AI.</p>
+    </div>
+  </section>
+
+  <section class="app-screen" data-screen="menu" hidden>
     <div class="app-hero">
       <div class="app-eyebrow">WSPÓLNA OPOWIEŚĆ · PROWADZONA PRZEZ AI</div>
       <h1>Twoja przygoda zaczyna się tutaj.</h1>
@@ -375,6 +393,8 @@
       let lastSpokenScene = -1;
       let speechEnabled = true;
       let currentGameState = null;
+      let narrationAudio = null;
+      let narrationRequest = 0;
       const socket = window.gameSocket;
 
       const choicesEl = root.querySelector("#gm-choices");
@@ -401,18 +421,41 @@
         }).join("");
       }
 
-      function speakScene(force) {
-        if (!speechEnabled || !window.speechSynthesis || document.querySelector("#setting-voice").value === "Bez głosu") return;
-        if (!force && lastSpokenScene === sceneIndex) return;
-        const scene = scenes[sceneIndex];
+      function speakWithBrowser(text) {
+        if (!window.speechSynthesis) return;
         window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(scene.narrative + " " + scene.question);
+        const utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = "pl-PL";
         utterance.rate = Number(document.querySelector("#setting-speech-rate").value) || 0.95;
         const polishVoice = window.speechSynthesis.getVoices().find(function (voice) { return voice.lang.toLowerCase().startsWith("pl"); });
         if (polishVoice) utterance.voice = polishVoice;
         window.speechSynthesis.speak(utterance);
+      }
+
+      async function speakScene(force) {
+        if (!speechEnabled || document.querySelector("#setting-voice").value === "Bez głosu") return;
+        if (!force && lastSpokenScene === sceneIndex) return;
+        const scene = scenes[sceneIndex];
+        const text = scene.narrative + " " + scene.question;
         lastSpokenScene = sceneIndex;
+        const requestId = ++narrationRequest;
+        if (narrationAudio) { narrationAudio.pause(); narrationAudio = null; }
+        if (window.speechSynthesis) window.speechSynthesis.cancel();
+        try {
+          const response = await fetch("/api/tts", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: "Bearer " + (window.getAccessToken?.() || "") },
+            body: JSON.stringify({ text: text, rate: Number(document.querySelector("#setting-speech-rate").value) || 0.95 })
+          });
+          if (!response.ok) throw new Error("TTS unavailable");
+          const audioUrl = URL.createObjectURL(await response.blob());
+          if (requestId !== narrationRequest) { URL.revokeObjectURL(audioUrl); return; }
+          narrationAudio = new Audio(audioUrl);
+          narrationAudio.addEventListener("ended", function () { URL.revokeObjectURL(audioUrl); });
+          await narrationAudio.play();
+        } catch {
+          if (requestId === narrationRequest) speakWithBrowser(text);
+        }
       }
 
       function renderScene() {
@@ -467,6 +510,7 @@
         if (socket && socket.connected && window.currentRoomCode) {
           socket.emit("game:choice", { choice: choice, custom: Boolean(custom) }, function (result) {
             if (!result?.ok) root.querySelector("#gm-toast").textContent = result?.error || "Nie udało się wysłać decyzji.";
+            else if (Number.isFinite(result.tokens)) window.setAccountTokens(result.tokens);
           });
           return;
         }
@@ -489,7 +533,7 @@
           return;
         }
         if (tokens < 1) {
-          root.querySelector("#gm-toast").textContent = "Drużyna nie ma już tokenów.";
+          root.querySelector("#gm-toast").textContent = "Nie masz już tokenów.";
           return;
         }
         choose(answer, true);
@@ -497,7 +541,7 @@
 
       voiceBtn.addEventListener("click", function () {
         if (!listening && tokens < 1) {
-          root.querySelector("#gm-toast").textContent = "Drużyna nie ma już tokenów na własną odpowiedź.";
+          root.querySelector("#gm-toast").textContent = "Nie masz już tokenów na własną odpowiedź.";
           return;
         }
         const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -532,15 +576,25 @@
         speechEnabled = !speechEnabled;
         speechToggle.textContent = speechEnabled ? "🔊 Głos włączony" : "🔇 Głos wyłączony";
         if (speechEnabled) speakScene(true);
-        else if (window.speechSynthesis) window.speechSynthesis.cancel();
+        else {
+          narrationRequest += 1;
+          if (narrationAudio) { narrationAudio.pause(); narrationAudio = null; }
+          if (window.speechSynthesis) window.speechSynthesis.cancel();
+        }
       });
 
       root.addEventListener("aigmv2:speak", function () { speakScene(true); });
 
+      window.setAccountTokens = function (balance) {
+        tokens = Number(balance) || 0;
+        root.querySelector("#gm-tokens").textContent = "◆ " + tokens + " tokenów";
+        document.querySelector("#account-tokens").textContent = tokens;
+      };
+
       window.applyGameState = function (state, start) {
         currentGameState = state;
         sceneIndex = Number(state.sceneIndex) || 0;
-        tokens = Number.isFinite(state.tokens) ? state.tokens : tokens;
+        tokens = typeof state.tokens === "number" ? state.tokens : tokens;
         players = state.players.map(function (player) {
           const displayName = player.character?.name || player.name;
           return {
@@ -580,6 +634,112 @@
     let selectedClass = "Strażnik";
     let currentRoom = null;
     let activePlayerName = "Gracz 1";
+    let authMode = "login";
+    let authSession = null;
+    let accountLoadPromise = null;
+    try { authSession = JSON.parse(localStorage.getItem("aigmv2-auth-session") || "null"); } catch {}
+    window.getAccessToken = function () { return authSession?.access_token || ""; };
+
+    async function apiRequest(path, options = {}, authenticated = false) {
+      const response = await fetch(path, {
+        ...options,
+        headers: {
+          "Content-Type": "application/json",
+          ...(authenticated && authSession?.access_token ? { Authorization: "Bearer " + authSession.access_token } : {}),
+          ...(options.headers || {})
+        }
+      });
+      const data = await response.json().catch(function () { return {}; });
+      if (!response.ok) throw new Error(data.error || "Nie udało się wykonać operacji.");
+      return data;
+    }
+
+    function saveSession(session) {
+      authSession = session;
+      localStorage.setItem("aigmv2-auth-session", JSON.stringify(session));
+      if (socket) socket.auth = { sessionToken: window.playerSessionToken, accessToken: session.access_token };
+    }
+
+    function applyAccount(account) {
+      activePlayerName = account.profile.display_name || "Gracz";
+      document.querySelector("#account-name").textContent = activePlayerName;
+      document.querySelector("#account-tokens").textContent = account.profile.tokens;
+      document.querySelector("#setup-player-name").value = activePlayerName;
+      document.querySelector("#join-player-name").value = activePlayerName;
+      document.querySelector("#logout-button").hidden = false;
+      localStorage.setItem("aigmv2-player-name", activePlayerName);
+      if (window.setAccountTokens) window.setAccountTokens(account.profile.tokens);
+    }
+
+    async function loadAccount() {
+      if (!authSession?.access_token) { showScreen("auth"); return false; }
+      try {
+        const account = await apiRequest("/api/account", {}, true);
+        applyAccount(account);
+        return true;
+      } catch {
+        if (!authSession?.refresh_token) { showScreen("auth"); return false; }
+        try {
+          const refreshed = await apiRequest("/api/auth/refresh", { method: "POST", body: JSON.stringify({ refreshToken: authSession.refresh_token }) });
+          saveSession(refreshed.session);
+          const account = await apiRequest("/api/account", {}, true);
+          applyAccount(account);
+          return true;
+        } catch {
+          localStorage.removeItem("aigmv2-auth-session");
+          authSession = null;
+          showScreen("auth");
+          return false;
+        }
+      }
+    }
+
+    function ensureAccount() {
+      if (!accountLoadPromise) accountLoadPromise = loadAccount().finally(function () { accountLoadPromise = null; });
+      return accountLoadPromise;
+    }
+
+    function setAuthMode(mode) {
+      authMode = mode;
+      const registering = mode === "register";
+      document.querySelector("#auth-name-field").hidden = !registering;
+      document.querySelector("#auth-submit").textContent = registering ? "Utwórz konto" : "Zaloguj się";
+      document.querySelector("#auth-login-tab").classList.toggle("btn-primary", !registering);
+      document.querySelector("#auth-register-tab").classList.toggle("btn-primary", registering);
+      document.querySelector("#auth-password").autocomplete = registering ? "new-password" : "current-password";
+      document.querySelector("#auth-notice").textContent = "";
+    }
+
+    document.querySelector("#auth-login-tab").addEventListener("click", function () { setAuthMode("login"); });
+    document.querySelector("#auth-register-tab").addEventListener("click", function () { setAuthMode("register"); });
+    document.querySelector("#auth-submit").addEventListener("click", async function () {
+      const notice = document.querySelector("#auth-notice");
+      notice.textContent = "Łączenie…";
+      try {
+        if (authMode === "register") {
+          const result = await apiRequest("/api/auth/signup", { method: "POST", body: JSON.stringify({ email: document.querySelector("#auth-email").value, password: document.querySelector("#auth-password").value, displayName: document.querySelector("#auth-display-name").value }) });
+          if (!result.session) { notice.textContent = result.message; return; }
+          saveSession(result.session);
+        } else {
+          const result = await apiRequest("/api/auth/signin", { method: "POST", body: JSON.stringify({ email: document.querySelector("#auth-email").value, password: document.querySelector("#auth-password").value }) });
+          saveSession(result.session);
+          applyAccount({ profile: result.profile });
+        }
+        await ensureAccount();
+        showScreen("menu");
+      } catch (error) { notice.textContent = error.message; }
+    });
+
+    document.querySelector("#logout-button").addEventListener("click", function () {
+      if (currentRoom && socket) socket.emit("room:leave");
+      currentRoom = null;
+      authSession = null;
+      localStorage.removeItem("aigmv2-auth-session");
+      localStorage.removeItem("aigmv2-room-code");
+      document.querySelector("#account-name").textContent = "Gość";
+      document.querySelector("#logout-button").hidden = true;
+      showScreen("auth");
+    });
 
     function renderLobby(room) {
       currentRoom = room;
@@ -640,6 +800,7 @@
       if (!socket?.connected) return alert("Brak połączenia z serwerem multiplayer. Spróbuj ponownie za chwilę.");
       socket.emit("room:create", {
         sessionToken: window.playerSessionToken,
+        accessToken: window.getAccessToken(),
         playerName: document.querySelector("#setup-player-name").value,
         settings: {
           campaign: selectedCampaign,
@@ -668,7 +829,7 @@
         document.querySelector("#join-notice").textContent = "Brak połączenia z serwerem multiplayer.";
         return;
       }
-      socket.emit("room:join", { code: code, playerName: document.querySelector("#join-player-name").value, sessionToken: window.playerSessionToken }, function (result) {
+      socket.emit("room:join", { code: code, playerName: document.querySelector("#join-player-name").value, sessionToken: window.playerSessionToken, accessToken: window.getAccessToken() }, function (result) {
         if (!result?.ok) {
           document.querySelector("#join-notice").textContent = result?.error || "Nie udało się dołączyć.";
           return;
@@ -712,11 +873,12 @@
 
     if (socket) {
       const connectionState = document.querySelector("#connection-state");
-      socket.on("connect", function () {
+      socket.on("connect", async function () {
         if (connectionState) connectionState.textContent = socket.recovered ? "● Połączenie odzyskane" : "● Multiplayer online";
+        if (!(await ensureAccount())) return;
         const savedCode = localStorage.getItem("aigmv2-room-code");
         if (savedCode) {
-          socket.emit("room:resume", { code: savedCode, sessionToken: window.playerSessionToken }, function (result) {
+          socket.emit("room:resume", { code: savedCode, sessionToken: window.playerSessionToken, accessToken: window.getAccessToken() }, function (result) {
             if (!result?.ok) {
               localStorage.removeItem("aigmv2-room-code");
               return;
@@ -746,7 +908,7 @@
         }
       }, 20000);
     }
-    showScreen("menu");
+    ensureAccount().then(function (loggedIn) { if (loggedIn && !currentRoom) showScreen("menu"); });
   }());
 </script>
 </body>
