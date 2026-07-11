@@ -25,10 +25,172 @@
     .viz-row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
     .viz-badge { display:inline-flex; align-items:center; border-radius:999px; padding:5px 9px; background:var(--secondary); color:var(--secondary-foreground); }
     .text-small { font-size:.82rem; }
+    [hidden] { display:none !important; }
+    .app-topbar { width:min(100%,1060px); margin:0 auto 28px; display:flex; align-items:center; justify-content:space-between; gap:16px; }
+    .app-brand { display:flex; align-items:center; gap:10px; font-weight:700; letter-spacing:.03em; }
+    .app-brand-mark { width:34px; height:34px; display:grid; place-items:center; border-radius:10px; background:var(--primary); color:var(--primary-foreground); }
+    .app-shell { width:min(100%,1060px); margin:0 auto; }
+    .app-screen { animation:screen-in .22s ease-out; }
+    .app-hero { padding:48px 0 28px; max-width:720px; }
+    .app-eyebrow { color:var(--primary); font-weight:600; margin-bottom:10px; }
+    .app-hero h1 { margin:0 0 14px; font-size:clamp(2.1rem,6vw,4.4rem); line-height:1.02; letter-spacing:-.04em; }
+    .app-hero p { color:var(--muted-foreground); font-size:1.08rem; max-width:620px; }
+    .app-actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:22px; }
+    .app-actions .btn { min-width:170px; }
+    .app-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
+    .app-panel { border:1px solid var(--border); border-radius:16px; padding:20px; background:var(--card); color:var(--card-foreground); }
+    .app-panel h2,.app-panel h3 { margin-top:0; }
+    .app-panel p { color:var(--muted-foreground); }
+    .app-header { display:flex; justify-content:space-between; gap:16px; align-items:flex-start; margin-bottom:20px; }
+    .app-header h1 { margin:0 0 6px; }
+    .app-muted { color:var(--muted-foreground); }
+    .app-form-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
+    .app-field { display:grid; gap:7px; }
+    .app-field select,.app-field input,.app-field textarea { width:100%; border:1px solid var(--input); border-radius:10px; padding:11px; background:var(--background); color:var(--foreground); font:inherit; }
+    .app-option-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+    .app-option { text-align:left; min-height:74px; }
+    .app-option.is-selected { background:var(--primary); color:var(--primary-foreground); border-color:var(--primary); }
+    .app-option small { display:block; opacity:.72; margin-top:4px; }
+    .room-code { font-size:clamp(2rem,8vw,4rem); letter-spacing:.16em; font-weight:700; color:var(--primary); margin:8px 0 18px; }
+    .room-layout { display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:16px; }
+    .player-stack { display:grid; gap:9px; }
+    .player-row { display:grid; grid-template-columns:42px 1fr auto; align-items:center; gap:10px; padding:10px; border:1px solid var(--border); border-radius:12px; }
+    .player-avatar { width:42px; height:42px; display:grid; place-items:center; border-radius:50%; background:var(--secondary); font-weight:700; }
+    .status-dot { width:9px; height:9px; border-radius:50%; background:var(--viz-series-1); display:inline-block; }
+    .save-stack { display:grid; gap:10px; }
+    .save-row { display:flex; justify-content:space-between; align-items:center; gap:14px; padding:14px; border:1px solid var(--border); border-radius:12px; }
+    .app-notice { min-height:1.5em; margin-top:10px; color:var(--primary); }
+    @keyframes screen-in { from { opacity:0; transform:translateY(8px); } }
+    @media (max-width:760px) {
+      body { padding:20px 14px; }
+      .app-grid,.app-form-grid,.app-option-grid,.room-layout { grid-template-columns:1fr; }
+      .app-hero { padding-top:24px; }
+      .save-row,.app-header { flex-direction:column; align-items:stretch; }
+    }
   </style>
 </head>
 <body>
-<section id="ai-gm-prototype" class="gm-shell" aria-label="Prototyp rozgrywki AI Mistrza Gry">
+<header class="app-topbar">
+  <div class="app-brand"><span class="app-brand-mark">✦</span><span>AI MISTRZ GRY</span></div>
+  <div class="viz-row">
+    <span class="viz-badge">◆ <span id="account-tokens">8</span> tokenów</span>
+    <button type="button" class="btn" data-go="settings">⚙ Ustawienia</button>
+  </div>
+</header>
+
+<main class="app-shell">
+  <section class="app-screen" data-screen="menu">
+    <div class="app-hero">
+      <div class="app-eyebrow">WSPÓLNA OPOWIEŚĆ · PROWADZONA PRZEZ AI</div>
+      <h1>Twoja przygoda zaczyna się tutaj.</h1>
+      <p>Stwórz drużynę, zaproś znajomych i rozegraj kampanię, która reaguje na każdą waszą decyzję.</p>
+      <div class="app-actions">
+        <button type="button" class="btn btn-primary" data-go="setup">Nowa kampania</button>
+        <button type="button" class="btn" data-go="join">Dołącz kodem</button>
+        <button type="button" class="btn" data-go="saves">Kontynuuj kampanię</button>
+      </div>
+    </div>
+    <div class="app-grid">
+      <article class="app-panel"><h3>Graj razem</h3><p>Od 1 do 6 graczy. Mistrz Gry zwraca się do całej drużyny albo konkretnej osoby.</p></article>
+      <article class="app-panel"><h3>Mów lub pisz</h3><p>Wybierz bezpłatną odpowiedź albo stwórz własną tekstem lub głosem za 1 token.</p></article>
+      <article class="app-panel"><h3>Wracaj do historii</h3><p>Kampanie mają oddzielne zapisy, postacie i historię podjętych decyzji.</p></article>
+    </div>
+  </section>
+
+  <section class="app-screen" data-screen="setup" hidden>
+    <div class="app-header"><div><h1>Nowa kampania</h1><div class="app-muted">Ustaw zasady przed utworzeniem pokoju.</div></div><button class="btn" type="button" data-go="menu">← Menu</button></div>
+    <div class="app-panel">
+      <div class="app-form-grid">
+        <label class="app-field">Liczba graczy
+          <select id="setup-player-count"><option>1</option><option>2</option><option>3</option><option selected>4</option><option>5</option><option>6</option></select>
+        </label>
+        <label class="app-field">Poziom trudności
+          <select id="setup-difficulty"><option>Łatwy</option><option selected>Średni</option><option>Trudny</option></select>
+        </label>
+        <label class="app-field">Postacie
+          <select id="setup-characters"><option selected>Tworzone przez graczy</option><option>Losowe</option></select>
+        </label>
+        <label class="app-field">Rodzaj kampanii
+          <select id="setup-campaign"><option selected>Gotowa kampania</option><option>Własny świat</option><option>Losowa przygoda</option></select>
+        </label>
+      </div>
+      <div class="app-field" style="margin-top:16px">
+        <span>Wybierz kampanię</span>
+        <div class="app-option-grid" id="campaign-options">
+          <button type="button" class="btn app-option is-selected" data-campaign="Cień nad Żelazną Doliną">Cień nad Żelazną Doliną<small>Mroczne fantasy · 4–6 sesji</small></button>
+          <button type="button" class="btn app-option" data-campaign="Stacja Helios">Stacja Helios<small>Sci-fi · 3–5 sesji</small></button>
+          <button type="button" class="btn app-option" data-campaign="Miasto bez snów">Miasto bez snów<small>Tajemnica · 5–8 sesji</small></button>
+        </div>
+      </div>
+      <div class="app-actions"><button type="button" class="btn btn-primary" id="create-room">Utwórz pokój</button></div>
+    </div>
+  </section>
+
+  <section class="app-screen" data-screen="join" hidden>
+    <div class="app-header"><div><h1>Dołącz do drużyny</h1><div class="app-muted">Wpisz sześcioliterowy kod otrzymany od gospodarza.</div></div><button class="btn" type="button" data-go="menu">← Menu</button></div>
+    <div class="app-panel" style="max-width:560px">
+      <label class="app-field">Kod pokoju<input id="join-code" maxlength="6" placeholder="NP. DZ7K9Q" autocomplete="off"></label>
+      <div class="app-actions"><button type="button" class="btn btn-primary" id="join-room">Dołącz</button></div>
+      <div class="app-notice" id="join-notice" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <section class="app-screen" data-screen="lobby" hidden>
+    <div class="app-header"><div><h1>Lobby kampanii</h1><div class="app-muted" id="lobby-campaign">Cień nad Żelazną Doliną · Średni</div></div><button class="btn" type="button" data-go="menu">Opuść pokój</button></div>
+    <div class="room-layout">
+      <section class="app-panel">
+        <div class="app-muted">Kod zaproszenia</div><div class="room-code" id="room-code">DZ7K9Q</div>
+        <div class="player-stack" id="lobby-players"></div>
+      </section>
+      <aside class="app-panel">
+        <h3>Przed rozpoczęciem</h3>
+        <p>Każdy gracz tworzy własną postać. Mistrz Gry rozpocznie, gdy drużyna będzie gotowa.</p>
+        <div class="app-actions">
+          <button type="button" class="btn" data-go="character">Stwórz postać</button>
+          <button type="button" class="btn btn-primary" id="start-game">Rozpocznij kampanię</button>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <section class="app-screen" data-screen="character" hidden>
+    <div class="app-header"><div><h1>Kreator postaci</h1><div class="app-muted">Nadaj bohaterowi imię, rolę i krótką historię.</div></div><button class="btn" type="button" data-go="lobby">← Lobby</button></div>
+    <div class="app-panel">
+      <div class="app-form-grid">
+        <label class="app-field">Imię postaci<input id="character-name" value="Aldren"></label>
+        <label class="app-field">Pochodzenie<select id="character-origin"><option>Wędrowiec</option><option>Mieszkaniec doliny</option><option>Wygnaniec</option><option>Szlachcic</option></select></label>
+      </div>
+      <div class="app-field" style="margin-top:16px"><span>Klasa</span>
+        <div class="app-option-grid" id="class-options">
+          <button type="button" class="btn app-option is-selected" data-class="Strażnik">Strażnik<small>Siła i ochrona drużyny</small></button>
+          <button type="button" class="btn app-option" data-class="Tropiciel">Tropiciel<small>Zwiad i walka dystansowa</small></button>
+          <button type="button" class="btn app-option" data-class="Mistyk">Mistyk<small>Wiedza i nieznana magia</small></button>
+        </div>
+      </div>
+      <label class="app-field" style="margin-top:16px">Historia postaci<textarea id="character-story" rows="4" placeholder="Co sprowadziło twoją postać do Żelaznej Doliny?"></textarea></label>
+      <div class="app-actions"><button type="button" class="btn btn-primary" id="save-character">Zapisz postać</button></div>
+    </div>
+  </section>
+
+  <section class="app-screen" data-screen="saves" hidden>
+    <div class="app-header"><div><h1>Zapisane kampanie</h1><div class="app-muted">Każda historia zachowuje drużynę i podjęte decyzje.</div></div><button class="btn" type="button" data-go="menu">← Menu</button></div>
+    <div class="app-panel save-stack">
+      <div class="save-row"><span><strong>Cień nad Żelazną Doliną</strong><br><span class="app-muted text-small">Rozdział I · Scena 1 · 4 graczy</span></span><button type="button" class="btn btn-primary" data-go="game">Kontynuuj</button></div>
+      <div class="save-row"><span><strong>Miasto bez snów</strong><br><span class="app-muted text-small">Prolog · 2 graczy</span></span><button type="button" class="btn" data-go="game">Kontynuuj</button></div>
+    </div>
+  </section>
+
+  <section class="app-screen" data-screen="settings" hidden>
+    <div class="app-header"><div><h1>Ustawienia</h1><div class="app-muted">Dostosuj głos i sposób odpowiadania.</div></div><button class="btn" type="button" data-go="menu">← Menu</button></div>
+    <div class="app-panel app-form-grid">
+      <label class="app-field">Mikrofon podczas tury<select><option selected>Uruchamiany przyciskiem</option><option>Automatycznie</option></select></label>
+      <label class="app-field">Głos Mistrza Gry<select><option selected>Głęboki narrator</option><option>Spokojny narrator</option><option>Bez głosu</option></select></label>
+      <label class="app-field">Szybkość narracji<select><option>Wolna</option><option selected>Normalna</option><option>Szybka</option></select></label>
+      <label class="app-field">Rozmiar tekstu<select><option>Mały</option><option selected>Standardowy</option><option>Duży</option></select></label>
+    </div>
+  </section>
+
+<section id="ai-gm-prototype" class="gm-shell" data-screen="game" aria-label="Prototyp rozgrywki AI Mistrza Gry" hidden>
   <style>
     #ai-gm-prototype { color:var(--foreground); width:min(100%,1060px); margin:0 auto; }
     #ai-gm-prototype * { box-sizing: border-box; }
@@ -81,6 +243,7 @@
     <div class="viz-row">
       <span class="viz-badge" id="gm-tokens">◆ 8 tokenów</span>
       <span class="viz-badge">● 4 graczy online</span>
+      <button type="button" class="btn" data-go="menu">Zapisz i wyjdź</button>
     </div>
   </header>
 
@@ -209,6 +372,7 @@
         root.querySelector("#gm-narrative").textContent = scene.narrative;
         root.querySelector("#gm-question").textContent = scene.question;
         root.querySelector("#gm-tokens").textContent = "◆ " + tokens + " tokenów";
+        document.querySelector("#account-tokens").textContent = tokens;
         const progress = Math.round(((sceneIndex + 1) / scenes.length) * 100);
         root.querySelector("#gm-progress-label").textContent = progress + "%";
         root.querySelector("#gm-progress-bar").style.width = progress + "%";
@@ -288,5 +452,97 @@
     }());
   </script>
 </section>
+</main>
+
+<script>
+  (function () {
+    const screens = Array.from(document.querySelectorAll("[data-screen]"));
+    let selectedCampaign = "Cień nad Żelazną Doliną";
+    let selectedClass = "Strażnik";
+    const partyTemplates = [
+      { initial: "M", name: "Maja", role: "Łowczyni" },
+      { initial: "O", name: "Olaf", role: "Wojownik" },
+      { initial: "L", name: "Lena", role: "Alchemiczka" },
+      { initial: "B", name: "Bartek", role: "Bard" },
+      { initial: "K", name: "Kornel", role: "Mag" }
+    ];
+
+    function renderLobbyPlayers(count) {
+      const host = '<div class="player-row"><span class="player-avatar">G</span><span><strong>Gracz 1</strong><br><span class="app-muted text-small" id="host-character">Tworzy postać</span></span><span class="viz-badge">Gospodarz</span></div>';
+      const guests = partyTemplates.slice(0, Math.max(0, count - 1)).map(function (player) {
+        return '<div class="player-row"><span class="player-avatar">' + player.initial + '</span><span><strong>' + player.name + '</strong><br><span class="app-muted text-small">' + player.role + ' · gotowy</span></span><span class="status-dot" aria-label="gotowy"></span></div>';
+      }).join("");
+      document.querySelector("#lobby-players").innerHTML = host + guests;
+    }
+
+    function showScreen(name) {
+      screens.forEach(function (screen) {
+        screen.hidden = screen.dataset.screen !== name;
+      });
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    document.addEventListener("click", function (event) {
+      const goButton = event.target.closest("[data-go]");
+      if (goButton) showScreen(goButton.dataset.go);
+    });
+
+    document.querySelectorAll("#campaign-options .app-option").forEach(function (button) {
+      button.addEventListener("click", function () {
+        document.querySelectorAll("#campaign-options .app-option").forEach(function (item) { item.classList.remove("is-selected"); });
+        button.classList.add("is-selected");
+        selectedCampaign = button.dataset.campaign;
+      });
+    });
+
+    document.querySelectorAll("#class-options .app-option").forEach(function (button) {
+      button.addEventListener("click", function () {
+        document.querySelectorAll("#class-options .app-option").forEach(function (item) { item.classList.remove("is-selected"); });
+        button.classList.add("is-selected");
+        selectedClass = button.dataset.class;
+      });
+    });
+
+    document.querySelector("#create-room").addEventListener("click", function () {
+      const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+      let code = "";
+      for (let index = 0; index < 6; index += 1) code += chars[Math.floor(Math.random() * chars.length)];
+      document.querySelector("#room-code").textContent = code;
+      document.querySelector("#lobby-campaign").textContent = selectedCampaign + " · " + document.querySelector("#setup-difficulty").value;
+      renderLobbyPlayers(Number(document.querySelector("#setup-player-count").value));
+      showScreen("lobby");
+    });
+
+    document.querySelector("#join-room").addEventListener("click", function () {
+      const input = document.querySelector("#join-code");
+      const code = input.value.trim().toUpperCase();
+      if (!/^[A-Z0-9]{6}$/.test(code)) {
+        document.querySelector("#join-notice").textContent = "Kod powinien mieć dokładnie 6 znaków.";
+        return;
+      }
+      document.querySelector("#room-code").textContent = code;
+      renderLobbyPlayers(4);
+      document.querySelector("#join-notice").textContent = "";
+      showScreen("lobby");
+    });
+
+    document.querySelector("#join-code").addEventListener("input", function (event) {
+      event.target.value = event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    });
+
+    document.querySelector("#save-character").addEventListener("click", function () {
+      const name = document.querySelector("#character-name").value.trim() || "Bez imienia";
+      document.querySelector("#host-character").textContent = name + " · " + selectedClass + " · gotowy";
+      showScreen("lobby");
+    });
+
+    document.querySelector("#start-game").addEventListener("click", function () {
+      showScreen("game");
+    });
+
+    renderLobbyPlayers(4);
+    showScreen("menu");
+  }());
+</script>
 </body>
 </html>
