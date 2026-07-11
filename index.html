@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#17130f">
+  <meta name="description" content="Interaktywny prototyp gry AI Mistrz Gry">
+  <title>AI Mistrz Gry — Cień nad Żelazną Doliną</title>
+  <style>
+    :root {
+      --background:#17130f; --foreground:#f5efe5; --card:#241e18; --card-foreground:#f5efe5;
+      --primary:#e6b85c; --primary-foreground:#24180a; --secondary:#332a21; --secondary-foreground:#f5efe5;
+      --muted:#302820; --muted-foreground:#bfb3a3; --accent:#423522; --accent-foreground:#fff4d6;
+      --border:#4a3c2e; --input:#4a3c2e; --ring:#e6b85c; --viz-series-1:#e6b85c;
+      font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      color-scheme:dark;
+    }
+    body { margin:0; padding:32px 20px; background:radial-gradient(circle at 50% 0%,#2c2218 0,var(--background) 48%); color:var(--foreground); }
+    button,textarea { font:inherit; }
+    .btn { appearance:none; border:1px solid var(--border); border-radius:10px; padding:10px 13px; background:var(--secondary); color:var(--secondary-foreground); cursor:pointer; }
+    .btn:hover { background:var(--accent); color:var(--accent-foreground); }
+    .btn-primary { background:var(--primary); color:var(--primary-foreground); border-color:var(--primary); }
+    .form-label { display:block; margin-bottom:7px; font-weight:500; }
+    .form-control { display:block; border:1px solid var(--input); border-radius:10px; padding:10px; background:var(--background); color:var(--foreground); }
+    .viz-row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+    .viz-badge { display:inline-flex; align-items:center; border-radius:999px; padding:5px 9px; background:var(--secondary); color:var(--secondary-foreground); }
+    .text-small { font-size:.82rem; }
+  </style>
+</head>
+<body>
+<section id="ai-gm-prototype" class="gm-shell" aria-label="Prototyp rozgrywki AI Mistrza Gry">
+  <style>
+    #ai-gm-prototype { color:var(--foreground); width:min(100%,1060px); margin:0 auto; }
+    #ai-gm-prototype * { box-sizing: border-box; }
+    #ai-gm-prototype .gm-top { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:16px; }
+    #ai-gm-prototype .gm-title { margin:0 0 4px; }
+    #ai-gm-prototype .gm-sub { color:var(--muted-foreground); }
+    #ai-gm-prototype .gm-layout { display:grid; grid-template-columns:minmax(0, 1fr) 210px; gap:16px; align-items:start; }
+    #ai-gm-prototype .gm-stage { min-width:0; }
+    #ai-gm-prototype .gm-scene { padding:20px; border:1px solid var(--border); border-radius:16px; background:var(--card); color:var(--card-foreground); }
+    #ai-gm-prototype .gm-meta { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:14px; }
+    #ai-gm-prototype .gm-narrative { margin:0 0 14px; }
+    #ai-gm-prototype .gm-question { margin:0; font-weight:500; }
+    #ai-gm-prototype .gm-choices { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-top:14px; }
+    #ai-gm-prototype .gm-choice { min-height:64px; text-align:left; white-space:normal; }
+    #ai-gm-prototype .gm-choice small { display:block; margin-top:4px; color:inherit; opacity:.72; }
+    #ai-gm-prototype .gm-actions { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:14px; }
+    #ai-gm-prototype .gm-custom { margin-top:14px; padding-top:14px; border-top:1px solid var(--border); }
+    #ai-gm-prototype .gm-custom[hidden] { display:none; }
+    #ai-gm-prototype .gm-custom textarea { width:100%; min-height:74px; resize:vertical; }
+    #ai-gm-prototype .gm-custom-footer { display:flex; justify-content:space-between; gap:10px; align-items:center; margin-top:8px; }
+    #ai-gm-prototype .gm-side { display:grid; gap:14px; }
+    #ai-gm-prototype .gm-section-title { margin:0 0 8px; }
+    #ai-gm-prototype .gm-player-list { display:grid; gap:7px; }
+    #ai-gm-prototype .gm-player { display:grid; grid-template-columns:34px 1fr auto; gap:8px; align-items:center; padding:8px; border:1px solid var(--border); border-radius:12px; }
+    #ai-gm-prototype .gm-player.is-active { background:var(--accent); color:var(--accent-foreground); }
+    #ai-gm-prototype .gm-avatar { width:34px; height:34px; display:grid; place-items:center; border-radius:50%; background:var(--secondary); color:var(--secondary-foreground); font-weight:500; }
+    #ai-gm-prototype .gm-player-name { font-weight:500; }
+    #ai-gm-prototype .gm-player-role { color:var(--muted-foreground); }
+    #ai-gm-prototype .gm-player.is-active .gm-player-role { color:inherit; opacity:.72; }
+    #ai-gm-prototype .gm-dot { width:8px; height:8px; border-radius:50%; background:var(--viz-series-1); }
+    #ai-gm-prototype .gm-log { display:grid; gap:8px; }
+    #ai-gm-prototype .gm-log-entry { padding-left:10px; border-left:2px solid var(--border); }
+    #ai-gm-prototype .gm-progress { height:6px; border-radius:999px; background:var(--muted); overflow:hidden; margin-top:8px; }
+    #ai-gm-prototype .gm-progress > span { display:block; height:100%; width:20%; background:var(--viz-series-1); transition:width .25s ease; }
+    #ai-gm-prototype .gm-listening { animation:gm-pulse 1.2s ease-in-out infinite; }
+    #ai-gm-prototype .gm-toast { margin-top:10px; color:var(--muted-foreground); min-height:1.4em; }
+    @keyframes gm-pulse { 50% { opacity:.55; } }
+    @media (max-width:640px) {
+      #ai-gm-prototype .gm-layout { grid-template-columns:1fr; }
+      #ai-gm-prototype .gm-choices { grid-template-columns:1fr; }
+      #ai-gm-prototype .gm-top { flex-direction:column; }
+    }
+  </style>
+
+  <header class="gm-top">
+    <div>
+      <h2 class="gm-title">Cień nad Żelazną Doliną</h2>
+      <div class="gm-sub text-small">Rozdział I · Zaginiony dzwon · Sesja online</div>
+    </div>
+    <div class="viz-row">
+      <span class="viz-badge" id="gm-tokens">◆ 8 tokenów</span>
+      <span class="viz-badge">● 4 graczy online</span>
+    </div>
+  </header>
+
+  <div class="gm-layout">
+    <main class="gm-stage">
+      <article class="gm-scene" aria-live="polite">
+        <div class="gm-meta">
+          <span class="viz-badge" id="gm-chapter">Scena 1 z 5</span>
+          <span class="viz-badge" id="gm-target">Pytanie do wszystkich</span>
+        </div>
+        <p class="gm-narrative" id="gm-narrative">O północy dzwon w starej wieży uderza po raz trzynasty. Mgła rozstępuje się i odsłania ślady prowadzące z rynku prosto do zamkniętej kopalni. Strażnicy odmawiają wejścia — podobno każdy, kto usłyszał trzynaste uderzenie, zniknął przed świtem.</p>
+        <p class="gm-question" id="gm-question">Co robi wasza drużyna?</p>
+
+        <div class="gm-choices" id="gm-choices"></div>
+
+        <div class="gm-actions">
+          <button type="button" class="btn" id="gm-custom-open">✦ Własna odpowiedź · 1 token</button>
+        </div>
+
+        <div class="gm-custom" id="gm-custom" hidden>
+          <label class="form-label" for="gm-custom-text">Wpisz albo powiedz własną decyzję</label>
+          <textarea class="form-control" id="gm-custom-text" placeholder="Np. Udajemy strażników i prosimy burmistrza o klucz do kopalni…"></textarea>
+          <div class="gm-custom-footer">
+            <span class="text-small gm-sub">Koszt: 1 token drużyny</span>
+            <div class="viz-row">
+              <button type="button" class="btn" id="gm-voice">🎙 Powiedz</button>
+              <button type="button" class="btn btn-primary" id="gm-custom-send">Zatwierdź decyzję</button>
+            </div>
+          </div>
+        </div>
+        <div class="gm-toast text-small" id="gm-toast" aria-live="polite"></div>
+      </article>
+    </main>
+
+    <aside class="gm-side" aria-label="Panel sesji">
+      <section>
+        <h3 class="gm-section-title">Drużyna</h3>
+        <div class="gm-player-list" id="gm-players"></div>
+      </section>
+      <section>
+        <div class="viz-row" style="justify-content:space-between">
+          <h3 class="gm-section-title">Postęp kampanii</h3>
+          <span class="text-small" id="gm-progress-label">20%</span>
+        </div>
+        <div class="gm-progress" aria-label="Postęp kampanii"><span id="gm-progress-bar"></span></div>
+      </section>
+      <section>
+        <h3 class="gm-section-title">Ostatnie decyzje</h3>
+        <div class="gm-log text-small" id="gm-log">
+          <div class="gm-log-entry">Drużyna przyjęła zlecenie burmistrza.</div>
+        </div>
+      </section>
+    </aside>
+  </div>
+
+  <script>
+    (function () {
+      const root = document.getElementById("ai-gm-prototype");
+      const scenes = [
+        {
+          target: "Pytanie do wszystkich",
+          narrative: "O północy dzwon w starej wieży uderza po raz trzynasty. Mgła rozstępuje się i odsłania ślady prowadzące z rynku prosto do zamkniętej kopalni. Strażnicy odmawiają wejścia — podobno każdy, kto usłyszał trzynaste uderzenie, zniknął przed świtem.",
+          question: "Co robi wasza drużyna?",
+          choices: ["Idziemy śladami do kopalni", "Badamy starą wieżę", "Rozmawiamy ze strażnikami", "Szukamy informacji w karczmie"]
+        },
+        {
+          target: "Pytanie do Mai",
+          narrative: "W błocie odnajdujecie srebrny medalion z symbolem pękniętego księżyca. Gdy Maja go dotyka, słyszy szept: «Nie pozwól mu otworzyć bramy». Pozostali słyszą tylko wiatr.",
+          question: "Maju, komu pokazujesz medalion?",
+          choices: ["Całej drużynie", "Tylko Olafowi", "Nikomu — ukrywam go", "Oddaję go kapłance"]
+        },
+        {
+          target: "Pytanie do Olafa",
+          narrative: "Przed wejściem do kopalni stoi kamienny strażnik. Jego oczy rozpalają się, gdy Olaf podchodzi bliżej. «Jedno wspomnienie za jedno przejście» — mówi posąg.",
+          question: "Olafie, jakie wspomnienie jesteś gotów poświęcić?",
+          choices: ["Pierwsze zwycięstwo", "Twarz dawnego mistrza", "Obietnicę z dzieciństwa", "Odmawiam zapłaty"]
+        },
+        {
+          target: "Pytanie do wszystkich",
+          narrative: "W głębi kopalni znajdujecie zaginiony dzwon zawieszony nad czarną szczeliną. Burmistrz już tam jest. Trzyma linę i twierdzi, że jedno uderzenie przywróci dolinie dawny dobrobyt.",
+          question: "Komu wierzycie?",
+          choices: ["Burmistrzowi", "Szeptowi z medalionu", "Niszczymy dzwon", "Najpierw badamy szczelinę"]
+        },
+        {
+          target: "Finał rozdziału",
+          narrative: "Dzwon pęka, a ze szczeliny wydobywa się światło. Dolina ocalała — na razie. Na odłamku metalu pojawia się mapa prowadząca na północ, do miasta, którego nie ma na żadnej znanej mapie.",
+          question: "Rozdział ukończony. Czy drużyna wyruszy dalej?",
+          choices: ["Rozpocznij Rozdział II", "Zapisz kampanię", "Zobacz podsumowanie", "Wróć do lobby"]
+        }
+      ];
+      const players = [
+        { name: "Maja", role: "Łowczyni", initials: "M" },
+        { name: "Olaf", role: "Wojownik", initials: "O" },
+        { name: "Lena", role: "Alchemiczka", initials: "L" },
+        { name: "Bartek", role: "Bard", initials: "B" }
+      ];
+      let sceneIndex = 0;
+      let tokens = 8;
+      let listening = false;
+
+      const choicesEl = root.querySelector("#gm-choices");
+      const customEl = root.querySelector("#gm-custom");
+      const customText = root.querySelector("#gm-custom-text");
+      const voiceBtn = root.querySelector("#gm-voice");
+
+      function activeName() {
+        const target = scenes[sceneIndex].target;
+        const found = players.find(function (player) { return target.includes(player.name); });
+        return found ? found.name : "";
+      }
+
+      function renderPlayers() {
+        const active = activeName();
+        root.querySelector("#gm-players").innerHTML = players.map(function (player) {
+          return '<div class="gm-player' + (active === player.name ? ' is-active' : '') + '">' +
+            '<span class="gm-avatar">' + player.initials + '</span>' +
+            '<span><span class="gm-player-name">' + player.name + '</span><br><span class="gm-player-role text-small">' + player.role + '</span></span>' +
+            '<span class="gm-dot" aria-label="online"></span></div>';
+        }).join("");
+      }
+
+      function renderScene() {
+        const scene = scenes[sceneIndex];
+        root.querySelector("#gm-chapter").textContent = "Scena " + (sceneIndex + 1) + " z " + scenes.length;
+        root.querySelector("#gm-target").textContent = scene.target;
+        root.querySelector("#gm-narrative").textContent = scene.narrative;
+        root.querySelector("#gm-question").textContent = scene.question;
+        root.querySelector("#gm-tokens").textContent = "◆ " + tokens + " tokenów";
+        const progress = Math.round(((sceneIndex + 1) / scenes.length) * 100);
+        root.querySelector("#gm-progress-label").textContent = progress + "%";
+        root.querySelector("#gm-progress-bar").style.width = progress + "%";
+        choicesEl.innerHTML = "";
+        scene.choices.forEach(function (choice, index) {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "btn gm-choice";
+          button.innerHTML = "<span>" + String.fromCharCode(65 + index) + ". " + choice + "</span><small>Gotowa odpowiedź · 0 tokenów</small>";
+          button.addEventListener("click", function () { choose(choice); });
+          choicesEl.appendChild(button);
+        });
+        customEl.hidden = true;
+        customText.value = "";
+        listening = false;
+        voiceBtn.classList.remove("gm-listening");
+        voiceBtn.textContent = "🎙 Powiedz";
+        root.querySelector("#gm-toast").textContent = "";
+        renderPlayers();
+      }
+
+      function addLog(text) {
+        const entry = document.createElement("div");
+        entry.className = "gm-log-entry";
+        entry.textContent = text;
+        const log = root.querySelector("#gm-log");
+        log.prepend(entry);
+        while (log.children.length > 3) log.removeChild(log.lastChild);
+      }
+
+      function choose(choice) {
+        addLog("Wybrano: " + choice + ".");
+        root.querySelector("#gm-toast").textContent = "AI Mistrz Gry uwzględnia decyzję i tworzy dalszy ciąg…";
+        window.setTimeout(function () {
+          if (sceneIndex < scenes.length - 1) sceneIndex += 1;
+          else sceneIndex = 0;
+          renderScene();
+        }, 650);
+      }
+
+      root.querySelector("#gm-custom-open").addEventListener("click", function () {
+        customEl.hidden = !customEl.hidden;
+        if (!customEl.hidden) customText.focus();
+      });
+
+      root.querySelector("#gm-custom-send").addEventListener("click", function () {
+        const answer = customText.value.trim();
+        if (!answer) {
+          root.querySelector("#gm-toast").textContent = "Najpierw wpisz własną decyzję.";
+          return;
+        }
+        if (tokens < 1) {
+          root.querySelector("#gm-toast").textContent = "Drużyna nie ma już tokenów.";
+          return;
+        }
+        tokens -= 1;
+        choose(answer);
+      });
+
+      voiceBtn.addEventListener("click", function () {
+        if (!listening && tokens < 1) {
+          root.querySelector("#gm-toast").textContent = "Drużyna nie ma już tokenów na własną odpowiedź.";
+          return;
+        }
+        listening = !listening;
+        voiceBtn.classList.toggle("gm-listening", listening);
+        voiceBtn.textContent = listening ? "● Słucham…" : "🎙 Powiedz";
+        if (listening) {
+          root.querySelector("#gm-toast").textContent = "Mikrofon aktywny dla: " + (activeName() || "całej drużyny") + ". Kliknij ponownie, aby zakończyć.";
+        } else {
+          customText.value = "Sprawdzamy inne rozwiązanie i działamy według własnego planu.";
+          root.querySelector("#gm-toast").textContent = "Odpowiedź głosowa została zamieniona na tekst. Możesz ją poprawić przed zatwierdzeniem.";
+        }
+      });
+
+      renderScene();
+    }());
+  </script>
+</section>
+</body>
+</html>
