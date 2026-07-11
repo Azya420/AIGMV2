@@ -57,6 +57,7 @@
     .player-row { display:grid; grid-template-columns:42px 1fr auto; align-items:center; gap:10px; padding:10px; border:1px solid var(--border); border-radius:12px; }
     .player-avatar { width:42px; height:42px; display:grid; place-items:center; border-radius:50%; background:var(--secondary); font-weight:700; }
     .status-dot { width:9px; height:9px; border-radius:50%; background:var(--viz-series-1); display:inline-block; }
+    .status-dot.is-offline { background:var(--muted-foreground); }
     .save-stack { display:grid; gap:10px; }
     .save-row { display:flex; justify-content:space-between; align-items:center; gap:14px; padding:14px; border:1px solid var(--border); border-radius:12px; }
     .app-notice { min-height:1.5em; margin-top:10px; color:var(--primary); }
@@ -226,6 +227,7 @@
     #ai-gm-prototype .gm-player-role { color:var(--muted-foreground); }
     #ai-gm-prototype .gm-player.is-active .gm-player-role { color:inherit; opacity:.72; }
     #ai-gm-prototype .gm-dot { width:8px; height:8px; border-radius:50%; background:var(--viz-series-1); }
+    #ai-gm-prototype .gm-dot.is-offline { background:var(--muted-foreground); }
     #ai-gm-prototype .gm-log { display:grid; gap:8px; }
     #ai-gm-prototype .gm-log-entry { padding-left:10px; border-left:2px solid var(--border); }
     #ai-gm-prototype .gm-progress { height:6px; border-radius:999px; background:var(--muted); overflow:hidden; margin-top:8px; }
@@ -306,7 +308,26 @@
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
-  <script>window.gameSocket = typeof io === "function" ? io() : null;</script>
+  <script>
+    (function () {
+      if (typeof io !== "function") { window.gameSocket = null; return; }
+      const tokenKey = "aigmv2-session-token";
+      let token = localStorage.getItem(tokenKey);
+      if (!token) {
+        token = window.crypto?.randomUUID ? window.crypto.randomUUID() : "player-" + Date.now() + "-" + Math.random().toString(36).slice(2);
+        localStorage.setItem(tokenKey, token);
+      }
+      window.playerSessionToken = token;
+      window.gameSocket = io({
+        auth: { sessionToken: token },
+        reconnection: true,
+        reconnectionAttempts: Infinity,
+        reconnectionDelay: 500,
+        reconnectionDelayMax: 5000,
+        timeout: 20000
+      });
+    }());
+  </script>
   <script>
     (function () {
       const root = document.getElementById("ai-gm-prototype");
@@ -376,7 +397,7 @@
           return '<div class="gm-player' + (isActive ? ' is-active' : '') + '">' +
             '<span class="gm-avatar">' + player.initials + '</span>' +
             '<span><span class="gm-player-name">' + player.name + '</span><br><span class="gm-player-role text-small">' + player.role + '</span></span>' +
-            '<span class="gm-dot" aria-label="online"></span></div>';
+            '<span class="gm-dot' + (player.connected === false ? ' is-offline' : '') + '" aria-label="' + (player.connected === false ? 'rozłączony' : 'online') + '"></span></div>';
         }).join("");
       }
 
@@ -526,7 +547,8 @@
             id: player.id,
             name: displayName,
             role: player.character?.characterClass || "Gracz",
-            initials: displayName.charAt(0).toUpperCase()
+            initials: displayName.charAt(0).toUpperCase(),
+            connected: player.connected
           };
         });
         if (state.settings?.campaign) root.querySelector(".gm-title").textContent = state.settings.campaign;
@@ -567,7 +589,8 @@
       document.querySelector("#lobby-players").innerHTML = room.players.map(function (player) {
         const isHost = player.id === room.hostId;
         const character = player.character ? player.character.name + " · " + player.character.characterClass : "Tworzy postać";
-        return '<div class="player-row"><span class="player-avatar">' + player.name.charAt(0).toUpperCase() + '</span><span><strong>' + player.name + '</strong><br><span class="app-muted text-small">' + character + '</span></span>' + (isHost ? '<span class="viz-badge">Gospodarz</span>' : '<span class="status-dot" aria-label="online"></span>') + '</div>';
+        const presence = player.connected === false ? " · rozłączony, czekamy…" : "";
+        return '<div class="player-row"><span class="player-avatar">' + player.name.charAt(0).toUpperCase() + '</span><span><strong>' + player.name + '</strong><br><span class="app-muted text-small">' + character + presence + '</span></span>' + (isHost ? '<span class="viz-badge">Gospodarz</span>' : '<span class="status-dot' + (player.connected === false ? ' is-offline' : '') + '" aria-label="' + (player.connected === false ? 'rozłączony' : 'online') + '"></span>') + '</div>';
       }).join("");
       const startButton = document.querySelector("#start-game");
       const everyoneReady = room.settings.characterMode !== "Tworzone przez graczy" || room.players.every((player) => player.ready);
@@ -591,6 +614,7 @@
           socket.emit("room:leave");
           currentRoom = null;
           window.currentRoomCode = null;
+          localStorage.removeItem("aigmv2-room-code");
         }
         showScreen(goButton.dataset.go);
       }
@@ -615,6 +639,7 @@
     document.querySelector("#create-room").addEventListener("click", function () {
       if (!socket?.connected) return alert("Brak połączenia z serwerem multiplayer. Spróbuj ponownie za chwilę.");
       socket.emit("room:create", {
+        sessionToken: window.playerSessionToken,
         playerName: document.querySelector("#setup-player-name").value,
         settings: {
           campaign: selectedCampaign,
@@ -625,6 +650,8 @@
       }, function (result) {
         if (!result?.ok) return alert(result?.error || "Nie udało się utworzyć pokoju.");
         activePlayerName = document.querySelector("#setup-player-name").value.trim() || "Gracz 1";
+        localStorage.setItem("aigmv2-player-name", activePlayerName);
+        localStorage.setItem("aigmv2-room-code", result.room.code);
         renderLobby(result.room);
         showScreen("lobby");
       });
@@ -641,12 +668,14 @@
         document.querySelector("#join-notice").textContent = "Brak połączenia z serwerem multiplayer.";
         return;
       }
-      socket.emit("room:join", { code: code, playerName: document.querySelector("#join-player-name").value }, function (result) {
+      socket.emit("room:join", { code: code, playerName: document.querySelector("#join-player-name").value, sessionToken: window.playerSessionToken }, function (result) {
         if (!result?.ok) {
           document.querySelector("#join-notice").textContent = result?.error || "Nie udało się dołączyć.";
           return;
         }
         activePlayerName = document.querySelector("#join-player-name").value.trim() || "Gracz";
+        localStorage.setItem("aigmv2-player-name", activePlayerName);
+        localStorage.setItem("aigmv2-room-code", result.room.code);
         document.querySelector("#join-notice").textContent = "";
         renderLobby(result.room);
         showScreen("lobby");
@@ -684,14 +713,38 @@
     if (socket) {
       const connectionState = document.querySelector("#connection-state");
       socket.on("connect", function () {
-        if (connectionState) connectionState.textContent = "● Multiplayer online";
+        if (connectionState) connectionState.textContent = socket.recovered ? "● Połączenie odzyskane" : "● Multiplayer online";
+        const savedCode = localStorage.getItem("aigmv2-room-code");
+        if (savedCode) {
+          socket.emit("room:resume", { code: savedCode, sessionToken: window.playerSessionToken }, function (result) {
+            if (!result?.ok) {
+              localStorage.removeItem("aigmv2-room-code");
+              return;
+            }
+            activePlayerName = localStorage.getItem("aigmv2-player-name") || activePlayerName;
+            renderLobby(result.room);
+            if (result.room.status === "lobby") showScreen("lobby");
+            else if (window.applyGameState) {
+              showScreen("game");
+              window.applyGameState(result.room, true);
+            }
+          });
+        }
       });
       socket.on("disconnect", function () {
-        if (connectionState) connectionState.textContent = "○ Łączenie…";
+        if (connectionState) connectionState.textContent = "○ Utracono połączenie — ponawiam…";
+      });
+      socket.on("connect_error", function () {
+        if (connectionState) connectionState.textContent = "○ Serwer się budzi — ponawiam…";
       });
       socket.on("room:update", function (room) {
         renderLobby(room);
       });
+      window.setInterval(function () {
+        if (socket.connected && currentRoom) {
+          socket.emit("session:heartbeat", { code: currentRoom.code }, function () {});
+        }
+      }, 20000);
     }
     showScreen("menu");
   }());

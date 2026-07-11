@@ -28,6 +28,8 @@ Każda kolejna zmiana w gałęzi `main` uruchomi automatyczne wdrożenie.
 - konfiguracja liczby graczy, trudności, postaci i rodzaju kampanii,
 - lobby drużyny i kreator postaci,
 - prawdziwe pokoje multiplayer synchronizowane przez Socket.IO,
+- automatyczne ponowne łączenie i odzyskiwanie miejsca gracza przez 2 minuty,
+- heartbeat aktywnego pokoju zapobiegający uśpieniu serwera podczas gry,
 - wspólny stan sceny, tokenów i decyzji na wszystkich urządzeniach,
 - oczekiwanie na wszystkich graczy lub tylko wskazaną osobę,
 - polskie czytanie narracji przez syntezę mowy przeglądarki,
