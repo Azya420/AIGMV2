@@ -2,7 +2,6 @@ services:
   - type: web
     name: aigmv2
     runtime: static
-    plan: free
     buildCommand: echo "No build required"
     staticPublishPath: .
     autoDeployTrigger: commit
