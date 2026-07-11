@@ -5,8 +5,8 @@
   "description": "Polska gra multiplayer z AI Mistrzem Gry",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "check": "node --check server.js"
+    "start": "node --require ./tts-cache-preload.js server.js",
+    "check": "node --check server.js && node --check tts-cache-preload.js"
   },
   "engines": {
     "node": ">=20"
