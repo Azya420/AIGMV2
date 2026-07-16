@@ -25,7 +25,7 @@ Następnie otwórz `http://localhost:3000`.
    - `SUPABASE_SERVICE_ROLE_KEY`
 4. Nigdy nie wpisuj klucza `service_role` do `index.html` lub publicznego repozytorium.
 
-Nowe konto otrzymuje 8 tokenów. Własna odpowiedź odejmuje 1 token atomowo w bazie. Narrator korzysta z syntezy mowy wbudowanej w przeglądarkę i automatycznie wybiera najlepiej oceniany polski głos. Dzięki temu czytanie narracji nie wywołuje żadnego płatnego API. Jakość zależy od głosów zainstalowanych w systemie; można wybrać konkretny głos w ustawieniach.
+Nowe konto otrzymuje 8 tokenów. Własna odpowiedź odejmuje 1 token atomowo w bazie. Narrator korzysta z syntezy mowy wbudowanej w przeglądarkę i automatycznie preferuje polski męski głos Google. Jeśli urządzenie go nie udostępnia, wybierany jest najlepszy dostępny polski głos męski. Czytanie narracji nie wywołuje żadnego płatnego API.
 
 Aplikacja rejestruje również Service Workera. Po pierwszym otwarciu zapisuje interfejs lokalnie, dzięki czemu kolejne wejścia pokazują menu natychmiast, jeszcze zanim darmowy serwer Render zakończy wybudzanie.
 
@@ -46,7 +46,7 @@ Każda kolejna zmiana w gałęzi `main` uruchomi automatyczne wdrożenie.
 - heartbeat aktywnego pokoju zapobiegający uśpieniu serwera podczas gry,
 - wspólny stan sceny, tokenów i decyzji na wszystkich urządzeniach,
 - oczekiwanie na wszystkich graczy lub tylko wskazaną osobę,
-- bezpłatne polskie czytanie narracji przez najlepszy dostępny głos przeglądarki,
+- bezpłatne polskie czytanie narracji z priorytetem dla męskiego głosu Google,
 - rejestracja i logowanie przez Supabase Auth,
 - trwałe saldo tokenów chronione przez Row Level Security,
 - głosowa odpowiedź gracza przez rozpoznawanie mowy w obsługiwanych przeglądarkach,

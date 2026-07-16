@@ -220,7 +220,7 @@
     <div class="app-header"><div><h1>Ustawienia</h1><div class="app-muted">Dostosuj głos i sposób odpowiadania.</div></div><button class="btn" type="button" data-go="menu">← Menu</button></div>
     <div class="app-panel app-form-grid">
       <label class="app-field">Mikrofon podczas tury<select id="setting-microphone"><option selected>Uruchamiany przyciskiem</option><option>Automatycznie</option></select></label>
-      <label class="app-field">Głos Mistrza Gry<select id="setting-voice"><option value="auto" selected>Najlepszy polski głos (automatycznie)</option><option value="off">Bez głosu</option></select><span class="text-small app-muted" id="voice-quality-hint">Wybierzemy najbardziej naturalny polski głos dostępny na tym urządzeniu.</span></label>
+      <div class="app-field"><span>Głos Mistrza Gry</span><strong>Google · polski męski</strong><span class="text-small app-muted" id="voice-quality-hint">Głos jest wybierany automatycznie.</span></div>
       <label class="app-field">Szybkość narracji<select id="setting-speech-rate"><option value="0.78">Wolna</option><option value="0.95" selected>Normalna</option><option value="1.12">Szybka</option></select></label>
       <label class="app-field">Rozmiar tekstu<select><option>Mały</option><option selected>Standardowy</option><option>Duży</option></select></label>
     </div>
@@ -447,15 +447,20 @@
         }).join("");
       }
 
-      const voiceSelect = document.querySelector("#setting-voice");
       const voiceHint = document.querySelector("#voice-quality-hint");
       let availableVoices = [];
+      let narratorVoice = null;
 
       function voiceScore(voice) {
         const name = voice.name.toLowerCase();
         let score = voice.lang.toLowerCase().startsWith("pl") ? 100 : 0;
-        if (/google|microsoft|natural|online/.test(name)) score += 40;
-        if (/zofia|marek|paulina|ewa|agnieszka/.test(name)) score += 25;
+        const google = /google/.test(name);
+        const male = /marek|male|męski|meski|masculine|mężczyzna|mezczyzna/.test(name);
+        if (google) score += 200;
+        if (male) score += 90;
+        if (google && male) score += 100;
+        if (/microsoft|natural|online/.test(name)) score += 30;
+        if (/zofia|paulina|ewa|agnieszka|female|żeński|zenski/.test(name)) score -= 35;
         if (voice.localService === false) score += 8;
         if (/espeak|festival|compact/.test(name)) score -= 50;
         return score;
@@ -464,29 +469,21 @@
       function refreshVoiceList() {
         if (!window.speechSynthesis) {
           voiceHint.textContent = "Ta przeglądarka nie obsługuje czytania głosowego.";
-          voiceSelect.value = "off";
           return;
         }
-        const previous = localStorage.getItem("aigmv2-narrator-voice") || voiceSelect.value || "auto";
         availableVoices = window.speechSynthesis.getVoices()
           .filter(function (voice) { return voice.lang.toLowerCase().startsWith("pl"); })
           .sort(function (a, b) { return voiceScore(b) - voiceScore(a); });
-        voiceSelect.innerHTML = '<option value="auto">Najlepszy polski głos (automatycznie)</option>' +
-          availableVoices.map(function (voice) { return '<option value="' + encodeURIComponent(voice.voiceURI) + '">' + voice.name + " · " + voice.lang + "</option>"; }).join("") +
-          '<option value="off">Bez głosu</option>';
-        voiceSelect.value = Array.from(voiceSelect.options).some(function (option) { return option.value === previous; }) ? previous : "auto";
-        const best = availableVoices[0];
-        voiceHint.textContent = best ? "Automatyczny wybór: " + best.name + ". Możesz porównać głosy z listy." : "Nie znaleziono polskiego głosu. Zainstaluj polski pakiet mowy w systemie.";
+        narratorVoice = availableVoices[0] || null;
+        voiceHint.textContent = narratorVoice ? "Aktywny głos: " + narratorVoice.name + "." : "Nie znaleziono polskiego głosu. Zainstaluj polski pakiet mowy w systemie.";
       }
 
       function selectedVoice() {
-        if (voiceSelect.value === "off") return null;
-        if (voiceSelect.value === "auto") return availableVoices[0] || null;
-        return availableVoices.find(function (voice) { return encodeURIComponent(voice.voiceURI) === voiceSelect.value; }) || availableVoices[0] || null;
+        return narratorVoice;
       }
 
       function speakScene(force) {
-        if (!speechEnabled || voiceSelect.value === "off" || !window.speechSynthesis) return;
+        if (!speechEnabled || !window.speechSynthesis) return;
         if (!force && lastSpokenScene === sceneIndex) return;
         const scene = scenes[sceneIndex];
         lastSpokenScene = sceneIndex;
@@ -503,11 +500,6 @@
 
       refreshVoiceList();
       if (window.speechSynthesis) window.speechSynthesis.addEventListener("voiceschanged", refreshVoiceList);
-      voiceSelect.addEventListener("change", function () {
-        localStorage.setItem("aigmv2-narrator-voice", voiceSelect.value);
-        if (voiceSelect.value === "off") window.speechSynthesis?.cancel();
-        else speakScene(true);
-      });
 
       function renderScene() {
         const scene = scenes[sceneIndex];
