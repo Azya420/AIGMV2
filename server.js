@@ -2,7 +2,6 @@
 
 const path = require("path");
 const http = require("http");
-const crypto = require("crypto");
 const express = require("express");
 const { Server } = require("socket.io");
 
@@ -22,18 +21,19 @@ const MAX_PLAYERS = 6;
 const SCENE_COUNT = 5;
 const SCENE_TARGETS = ["all", 0, 1, "all", "all"];
 const disconnectTimers = new Map();
-const ttsCache = new Map();
-const ttsLastRequest = new Map();
 const SUPABASE_URL = String(process.env.SUPABASE_URL || "").replace(/\/$/, "");
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || "";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
-const OPENAI_API_BASE_URL = String(process.env.OPENAI_API_BASE_URL || "https://api.openai.com").replace(/\/$/, "");
 
 app.disable("x-powered-by");
 app.use(express.json({ limit: "20kb" }));
 app.get("/health", (_request, response) => response.json({ ok: true, rooms: rooms.size }));
 app.get("/", (_request, response) => response.sendFile(path.join(__dirname, "index.html")));
+app.get("/sw.js", (_request, response) => {
+  response.set("Cache-Control", "no-cache");
+  response.set("Service-Worker-Allowed", "/");
+  response.sendFile(path.join(__dirname, "sw.js"));
+});
 
 function bearerToken(request) {
   const header = String(request.headers.authorization || "");
@@ -116,44 +116,6 @@ app.get("/api/account", async (request, response) => {
     const profile = await getProfile(user.id, accessToken);
     response.json({ user: { id: user.id, email: user.email }, profile });
   } catch (error) { response.status(401).json({ error: error.message }); }
-});
-
-app.post("/api/tts", async (request, response) => {
-  try {
-    const user = await getSupabaseUser(bearerToken(request));
-    if (!OPENAI_API_KEY) throw new Error("Klucz OpenAI nie został jeszcze dodany na Render.");
-    const input = cleanText(request.body?.text, 2000);
-    const rate = Number(request.body?.rate) || 0.95;
-    const pace = rate < 0.85 ? "Mów spokojnie i wolniej." : (rate > 1.05 ? "Mów nieco szybciej, nadal wyraźnie." : "Mów w naturalnym tempie.");
-    if (!input) return response.status(400).json({ error: "Brak tekstu do odczytania." });
-    const cacheKey = crypto.createHash("sha256").update(`${input}|${pace}`).digest("hex");
-    if (ttsCache.has(cacheKey)) {
-      response.set("Content-Type", "audio/mpeg");
-      response.set("Cache-Control", "private, max-age=3600");
-      return response.send(ttsCache.get(cacheKey));
-    }
-    const lastRequest = ttsLastRequest.get(user.id) || 0;
-    if (Date.now() - lastRequest < 1500) return response.status(429).json({ error: "Odczekaj chwilę przed kolejną narracją." });
-    ttsLastRequest.set(user.id, Date.now());
-    const audioResponse = await fetch(`${OPENAI_API_BASE_URL}/v1/audio/speech`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "gpt-4o-mini-tts",
-        voice: "cedar",
-        input,
-        instructions: `Mów po polsku jak doświadczony mistrz gry fantasy: naturalnie, ciepłym niskim głosem, z filmową intonacją, subtelnym napięciem i wyraźnymi pauzami. Nie przesadzaj z teatralnością. ${pace}`,
-        response_format: "mp3"
-      })
-    });
-    if (!audioResponse.ok) throw new Error((await audioResponse.text()).slice(0, 300) || "Nie udało się wygenerować głosu.");
-    const audioBuffer = Buffer.from(await audioResponse.arrayBuffer());
-    ttsCache.set(cacheKey, audioBuffer);
-    if (ttsCache.size > 50) ttsCache.delete(ttsCache.keys().next().value);
-    response.set("Content-Type", "audio/mpeg");
-    response.set("Cache-Control", "private, max-age=3600");
-    response.send(audioBuffer);
-  } catch (error) { response.status(400).json({ error: error.message }); }
 });
 
 function cleanText(value, maxLength) {

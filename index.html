@@ -69,6 +69,18 @@
       .save-row,.app-header { flex-direction:column; align-items:stretch; }
     }
   </style>
+  <script>
+    window.showAppScreen = function (name) {
+      document.querySelectorAll("[data-screen]").forEach(function (screen) {
+        screen.hidden = screen.dataset.screen !== name;
+      });
+      window.scrollTo(0, 0);
+    };
+    document.addEventListener("click", function (event) {
+      const button = event.target.closest("[data-go]");
+      if (button) window.showAppScreen(button.dataset.go);
+    }, true);
+  </script>
 </head>
 <body>
 <header class="app-topbar">
@@ -95,7 +107,7 @@
       <label class="app-field">Hasło<input id="auth-password" type="password" minlength="8" autocomplete="current-password"></label>
       <div class="app-actions"><button type="button" class="btn btn-primary" id="auth-submit">Zaloguj się</button></div>
       <div class="app-notice" id="auth-notice" aria-live="polite"></div>
-      <p class="text-small app-muted">Głos Mistrza Gry jest generowany przez AI.</p>
+      <p class="text-small app-muted">Głos Mistrza Gry działa bezpłatnie na urządzeniu gracza.</p>
     </div>
   </section>
 
@@ -208,7 +220,7 @@
     <div class="app-header"><div><h1>Ustawienia</h1><div class="app-muted">Dostosuj głos i sposób odpowiadania.</div></div><button class="btn" type="button" data-go="menu">← Menu</button></div>
     <div class="app-panel app-form-grid">
       <label class="app-field">Mikrofon podczas tury<select id="setting-microphone"><option selected>Uruchamiany przyciskiem</option><option>Automatycznie</option></select></label>
-      <label class="app-field">Głos Mistrza Gry<select id="setting-voice"><option selected>Polski narrator</option><option>Bez głosu</option></select></label>
+      <label class="app-field">Głos Mistrza Gry<select id="setting-voice"><option value="auto" selected>Najlepszy polski głos (automatycznie)</option><option value="off">Bez głosu</option></select><span class="text-small app-muted" id="voice-quality-hint">Wybierzemy najbardziej naturalny polski głos dostępny na tym urządzeniu.</span></label>
       <label class="app-field">Szybkość narracji<select id="setting-speech-rate"><option value="0.78">Wolna</option><option value="0.95" selected>Normalna</option><option value="1.12">Szybka</option></select></label>
       <label class="app-field">Rozmiar tekstu<select><option>Mały</option><option selected>Standardowy</option><option>Duży</option></select></label>
     </div>
@@ -325,6 +337,22 @@
     </aside>
   </div>
 
+  <script>
+    (function () {
+      try {
+        const session = JSON.parse(localStorage.getItem("aigmv2-auth-session") || "null");
+        const profile = JSON.parse(localStorage.getItem("aigmv2-account-profile") || "null");
+        if (session?.access_token) {
+          window.showAppScreen("menu");
+          if (profile) {
+            document.querySelector("#account-name").textContent = profile.display_name || "Gracz";
+            document.querySelector("#account-tokens").textContent = Number(profile.tokens) || 0;
+            document.querySelector("#logout-button").hidden = false;
+          }
+        }
+      } catch {}
+    }());
+  </script>
   <script src="/socket.io/socket.io.js"></script>
   <script>
     (function () {
@@ -393,8 +421,6 @@
       let lastSpokenScene = -1;
       let speechEnabled = true;
       let currentGameState = null;
-      let narrationAudio = null;
-      let narrationRequest = 0;
       const socket = window.gameSocket;
 
       const choicesEl = root.querySelector("#gm-choices");
@@ -421,42 +447,67 @@
         }).join("");
       }
 
-      function speakWithBrowser(text) {
-        if (!window.speechSynthesis) return;
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = "pl-PL";
-        utterance.rate = Number(document.querySelector("#setting-speech-rate").value) || 0.95;
-        const polishVoice = window.speechSynthesis.getVoices().find(function (voice) { return voice.lang.toLowerCase().startsWith("pl"); });
-        if (polishVoice) utterance.voice = polishVoice;
-        window.speechSynthesis.speak(utterance);
+      const voiceSelect = document.querySelector("#setting-voice");
+      const voiceHint = document.querySelector("#voice-quality-hint");
+      let availableVoices = [];
+
+      function voiceScore(voice) {
+        const name = voice.name.toLowerCase();
+        let score = voice.lang.toLowerCase().startsWith("pl") ? 100 : 0;
+        if (/google|microsoft|natural|online/.test(name)) score += 40;
+        if (/zofia|marek|paulina|ewa|agnieszka/.test(name)) score += 25;
+        if (voice.localService === false) score += 8;
+        if (/espeak|festival|compact/.test(name)) score -= 50;
+        return score;
       }
 
-      async function speakScene(force) {
-        if (!speechEnabled || document.querySelector("#setting-voice").value === "Bez głosu") return;
+      function refreshVoiceList() {
+        if (!window.speechSynthesis) {
+          voiceHint.textContent = "Ta przeglądarka nie obsługuje czytania głosowego.";
+          voiceSelect.value = "off";
+          return;
+        }
+        const previous = localStorage.getItem("aigmv2-narrator-voice") || voiceSelect.value || "auto";
+        availableVoices = window.speechSynthesis.getVoices()
+          .filter(function (voice) { return voice.lang.toLowerCase().startsWith("pl"); })
+          .sort(function (a, b) { return voiceScore(b) - voiceScore(a); });
+        voiceSelect.innerHTML = '<option value="auto">Najlepszy polski głos (automatycznie)</option>' +
+          availableVoices.map(function (voice) { return '<option value="' + encodeURIComponent(voice.voiceURI) + '">' + voice.name + " · " + voice.lang + "</option>"; }).join("") +
+          '<option value="off">Bez głosu</option>';
+        voiceSelect.value = Array.from(voiceSelect.options).some(function (option) { return option.value === previous; }) ? previous : "auto";
+        const best = availableVoices[0];
+        voiceHint.textContent = best ? "Automatyczny wybór: " + best.name + ". Możesz porównać głosy z listy." : "Nie znaleziono polskiego głosu. Zainstaluj polski pakiet mowy w systemie.";
+      }
+
+      function selectedVoice() {
+        if (voiceSelect.value === "off") return null;
+        if (voiceSelect.value === "auto") return availableVoices[0] || null;
+        return availableVoices.find(function (voice) { return encodeURIComponent(voice.voiceURI) === voiceSelect.value; }) || availableVoices[0] || null;
+      }
+
+      function speakScene(force) {
+        if (!speechEnabled || voiceSelect.value === "off" || !window.speechSynthesis) return;
         if (!force && lastSpokenScene === sceneIndex) return;
         const scene = scenes[sceneIndex];
-        const text = scene.narrative + " " + scene.question;
         lastSpokenScene = sceneIndex;
-        const requestId = ++narrationRequest;
-        if (narrationAudio) { narrationAudio.pause(); narrationAudio = null; }
-        if (window.speechSynthesis) window.speechSynthesis.cancel();
-        try {
-          const response = await fetch("/api/tts", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: "Bearer " + (window.getAccessToken?.() || "") },
-            body: JSON.stringify({ text: text, rate: Number(document.querySelector("#setting-speech-rate").value) || 0.95 })
-          });
-          if (!response.ok) throw new Error("TTS unavailable");
-          const audioUrl = URL.createObjectURL(await response.blob());
-          if (requestId !== narrationRequest) { URL.revokeObjectURL(audioUrl); return; }
-          narrationAudio = new Audio(audioUrl);
-          narrationAudio.addEventListener("ended", function () { URL.revokeObjectURL(audioUrl); });
-          await narrationAudio.play();
-        } catch {
-          if (requestId === narrationRequest) speakWithBrowser(text);
-        }
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(scene.narrative + ". " + scene.question);
+        utterance.lang = "pl-PL";
+        utterance.rate = Number(document.querySelector("#setting-speech-rate").value) || 0.95;
+        utterance.pitch = 0.92;
+        utterance.volume = 1;
+        const voice = selectedVoice();
+        if (voice) utterance.voice = voice;
+        window.setTimeout(function () { window.speechSynthesis.speak(utterance); }, 40);
       }
+
+      refreshVoiceList();
+      if (window.speechSynthesis) window.speechSynthesis.addEventListener("voiceschanged", refreshVoiceList);
+      voiceSelect.addEventListener("change", function () {
+        localStorage.setItem("aigmv2-narrator-voice", voiceSelect.value);
+        if (voiceSelect.value === "off") window.speechSynthesis?.cancel();
+        else speakScene(true);
+      });
 
       function renderScene() {
         const scene = scenes[sceneIndex];
@@ -577,8 +628,6 @@
         speechToggle.textContent = speechEnabled ? "🔊 Głos włączony" : "🔇 Głos wyłączony";
         if (speechEnabled) speakScene(true);
         else {
-          narrationRequest += 1;
-          if (narrationAudio) { narrationAudio.pause(); narrationAudio = null; }
           if (window.speechSynthesis) window.speechSynthesis.cancel();
         }
       });
@@ -638,7 +687,6 @@
     let authSession = null;
     let accountLoadPromise = null;
     let pendingScreen = "menu";
-    let pendingScreen = "menu";
     try { authSession = JSON.parse(localStorage.getItem("aigmv2-auth-session") || "null"); } catch {}
     window.getAccessToken = function () { return authSession?.access_token || ""; };
 
@@ -670,6 +718,7 @@
       document.querySelector("#join-player-name").value = activePlayerName;
       document.querySelector("#logout-button").hidden = false;
       localStorage.setItem("aigmv2-player-name", activePlayerName);
+      localStorage.setItem("aigmv2-account-profile", JSON.stringify(account.profile));
       if (window.setAccountTokens) window.setAccountTokens(account.profile.tokens);
     }
 
@@ -682,6 +731,7 @@
       } catch {
         if (!authSession?.refresh_token) {
           localStorage.removeItem("aigmv2-auth-session");
+          localStorage.removeItem("aigmv2-account-profile");
           authSession = null;
           document.querySelector("#account-name").textContent = "Gość";
           document.querySelector("#account-tokens").textContent = "—";
@@ -696,6 +746,7 @@
           return true;
         } catch {
           localStorage.removeItem("aigmv2-auth-session");
+          localStorage.removeItem("aigmv2-account-profile");
           authSession = null;
           document.querySelector("#account-name").textContent = "Gość";
           document.querySelector("#account-tokens").textContent = "—";
@@ -712,17 +763,12 @@
 
     async function openProtectedScreen(name) {
       pendingScreen = name;
-      if (await ensureAccount()) {
-        pendingScreen = "menu";
+      if (authSession?.access_token && localStorage.getItem("aigmv2-account-profile")) {
         showScreen(name);
+        pendingScreen = "menu";
+        ensureAccount();
         return;
       }
-      setAuthMode("login");
-      showScreen("auth");
-    }
-
-    async function openProtectedScreen(name) {
-      pendingScreen = name;
       if (await ensureAccount()) {
         pendingScreen = "menu";
         showScreen(name);
@@ -770,6 +816,7 @@
       currentRoom = null;
       authSession = null;
       localStorage.removeItem("aigmv2-auth-session");
+      localStorage.removeItem("aigmv2-account-profile");
       localStorage.removeItem("aigmv2-room-code");
       document.querySelector("#account-name").textContent = "Gość";
       document.querySelector("#account-tokens").textContent = "—";
@@ -800,7 +847,7 @@
         screen.hidden = screen.dataset.screen !== name;
       });
       if (name === "game") document.querySelector("#ai-gm-prototype").dispatchEvent(new Event("aigmv2:speak"));
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      window.scrollTo(0, 0);
     }
     window.showAppScreen = showScreen;
 
@@ -952,11 +999,22 @@
         }
       }, 20000);
     }
-    document.querySelector("#account-tokens").textContent = authSession?.access_token ? document.querySelector("#account-tokens").textContent : "—";
-    showScreen("menu");
-    document.querySelector("#account-tokens").textContent = authSession?.access_token ? document.querySelector("#account-tokens").textContent : "—";
-    showScreen("menu");
-    ensureAccount().then(function (loggedIn) { if (loggedIn && !currentRoom) showScreen("menu"); });
+    const cachedProfile = localStorage.getItem("aigmv2-account-profile");
+    if (authSession?.access_token) {
+      if (cachedProfile) {
+        try { applyAccount({ profile: JSON.parse(cachedProfile) }); } catch {}
+      }
+      if (!localStorage.getItem("aigmv2-room-code")) showScreen("menu");
+    }
+    if (!authSession?.access_token) {
+      document.querySelector("#account-tokens").textContent = "—";
+      showScreen("menu");
+    }
+    ensureAccount().then(function (loggedIn) { if (loggedIn && !currentRoom && !localStorage.getItem("aigmv2-room-code")) showScreen("menu"); });
+
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", function () { navigator.serviceWorker.register("/sw.js").catch(function () {}); });
+    }
   }());
 </script>
 </body>

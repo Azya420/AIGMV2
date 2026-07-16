@@ -15,7 +15,7 @@ npm start
 
 Następnie otwórz `http://localhost:3000`.
 
-## Konfiguracja Supabase i głosu
+## Konfiguracja Supabase
 
 1. Utwórz projekt w Supabase.
 2. W **SQL Editor** uruchom cały plik `supabase.sql`.
@@ -23,10 +23,11 @@ Następnie otwórz `http://localhost:3000`.
    - `SUPABASE_URL`
    - `SUPABASE_ANON_KEY`
    - `SUPABASE_SERVICE_ROLE_KEY`
-   - `OPENAI_API_KEY`
-4. Nigdy nie wpisuj klucza `service_role` ani klucza OpenAI do `index.html` lub publicznego repozytorium.
+4. Nigdy nie wpisuj klucza `service_role` do `index.html` lub publicznego repozytorium.
 
-Nowe konto otrzymuje 8 tokenów. Własna odpowiedź odejmuje 1 token atomowo w bazie. Narrator korzysta z modelu `gpt-4o-mini-tts` i głosu `cedar`; odtwarzany głos jest generowany przez AI.
+Nowe konto otrzymuje 8 tokenów. Własna odpowiedź odejmuje 1 token atomowo w bazie. Narrator korzysta z syntezy mowy wbudowanej w przeglądarkę i automatycznie wybiera najlepiej oceniany polski głos. Dzięki temu czytanie narracji nie wywołuje żadnego płatnego API. Jakość zależy od głosów zainstalowanych w systemie; można wybrać konkretny głos w ustawieniach.
+
+Aplikacja rejestruje również Service Workera. Po pierwszym otwarciu zapisuje interfejs lokalnie, dzięki czemu kolejne wejścia pokazują menu natychmiast, jeszcze zanim darmowy serwer Render zakończy wybudzanie.
 
 ## Publikacja na Render
 
@@ -45,8 +46,7 @@ Każda kolejna zmiana w gałęzi `main` uruchomi automatyczne wdrożenie.
 - heartbeat aktywnego pokoju zapobiegający uśpieniu serwera podczas gry,
 - wspólny stan sceny, tokenów i decyzji na wszystkich urządzeniach,
 - oczekiwanie na wszystkich graczy lub tylko wskazaną osobę,
-- polskie czytanie narracji przez syntezę mowy przeglądarki,
-- naturalniejsza narracja OpenAI TTS z awaryjnym głosem przeglądarki,
+- bezpłatne polskie czytanie narracji przez najlepszy dostępny głos przeglądarki,
 - rejestracja i logowanie przez Supabase Auth,
 - trwałe saldo tokenów chronione przez Row Level Security,
 - głosowa odpowiedź gracza przez rozpoznawanie mowy w obsługiwanych przeglądarkach,

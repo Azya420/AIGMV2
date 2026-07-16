@@ -8,34 +8,10 @@ const PATCH_FLAG = Symbol.for("aigmv2.guestEntryPatched");
 let cachedSource = null;
 let cachedHtml = null;
 
-const PENDING_DECLARATION = '    let pendingScreen = "menu";';
-const PROTECTED_SCREEN_FUNCTION = `    async function openProtectedScreen(name) {
-      pendingScreen = name;
-      if (await ensureAccount()) {
-        pendingScreen = "menu";
-        showScreen(name);
-        return;
-      }
-      setAuthMode("login");
-      showScreen("auth");
-    }`;
-
-function keepSingleOccurrence(source, value) {
-  const firstIndex = source.indexOf(value);
-  if (firstIndex < 0) return source;
-  const beforeAndFirst = source.slice(0, firstIndex + value.length);
-  const afterFirst = source.slice(firstIndex + value.length).split(value).join("");
-  return beforeAndFirst + afterFirst;
-}
-
 function transformIndexHtml(source) {
   if (source === cachedSource && cachedHtml) return cachedHtml;
 
-  let html = source;
-
-  // The repository now contains the guest flow directly. This preload only
-  // normalizes older deployments and removes duplicate patches safely.
-  html = html
+  const html = source
     .replace(
       '<span class="viz-badge">◆ <span id="account-tokens">8</span> tokenów</span>',
       '<span class="viz-badge">◆ <span id="account-tokens">—</span> tokenów</span>'
@@ -48,29 +24,6 @@ function transformIndexHtml(source) {
       /<section class="app-screen" data-screen="menu"(?: hidden)?>/,
       '<section class="app-screen" data-screen="menu">'
     );
-
-  html = keepSingleOccurrence(html, PENDING_DECLARATION);
-  html = keepSingleOccurrence(html, PROTECTED_SCREEN_FUNCTION);
-
-  // If an older index.html is deployed, add the missing declaration/function
-  // once, without ever duplicating them on subsequent requests.
-  if (!html.includes(PENDING_DECLARATION)) {
-    html = html.replace(
-      "    let accountLoadPromise = null;",
-      `    let accountLoadPromise = null;\n${PENDING_DECLARATION}`
-    );
-  }
-
-  if (!html.includes(PROTECTED_SCREEN_FUNCTION)) {
-    const ensureAccountBlock = `    function ensureAccount() {
-      if (!accountLoadPromise) accountLoadPromise = loadAccount().finally(function () { accountLoadPromise = null; });
-      return accountLoadPromise;
-    }`;
-    html = html.replace(
-      ensureAccountBlock,
-      `${ensureAccountBlock}\n\n${PROTECTED_SCREEN_FUNCTION}`
-    );
-  }
 
   cachedSource = source;
   cachedHtml = html;
@@ -113,7 +66,7 @@ if (!express.response[PATCH_FLAG]) {
   };
 
   express.response[PATCH_FLAG] = true;
-  console.log("[AIGMV2 guest flow] menu gościa aktywne; duplikaty skryptu są usuwane.");
+  console.log("[AIGMV2 guest flow] szybkie menu gościa aktywne.");
 }
 
 module.exports = { transformIndexHtml };
