@@ -1,6 +1,6 @@
 "use strict";
 
-const CACHE_NAME = "aigmv2-shell-v4";
+const CACHE_NAME = "aigmv2-shell-v5";
 const APP_SHELL = ["/"];
 
 self.addEventListener("install", function (event) {

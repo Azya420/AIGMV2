@@ -243,17 +243,21 @@
   <section class="app-screen" data-screen="saves" hidden>
     <div class="app-header"><div><h1>Zapisane kampanie</h1><div class="app-muted">Każda historia zachowuje drużynę i podjęte decyzje.</div></div><button class="btn" type="button" data-go="menu">← Menu</button></div>
     <div class="app-panel save-stack">
-      <div class="save-row"><span><strong>Cień nad Żelazną Doliną</strong><br><span class="app-muted text-small">Rozdział I · Scena 1 · 4 graczy</span></span><button type="button" class="btn btn-primary" data-go="game">Kontynuuj</button></div>
-      <div class="save-row"><span><strong>Miasto bez snów</strong><br><span class="app-muted text-small">Prolog · 2 graczy</span></span><button type="button" class="btn" data-go="game">Kontynuuj</button></div>
+      <div class="save-row"><span><strong>Cień nad Żelazną Doliną</strong><br><span class="app-muted text-small">Rozdział I · Scena 1 · zapis lokalny</span></span><button type="button" class="btn btn-primary continue-campaign" data-campaign="Cień nad Żelazną Doliną" data-scene-index="0">Kontynuuj</button></div>
+      <div class="save-row"><span><strong>Miasto bez snów</strong><br><span class="app-muted text-small">Prolog · zapis lokalny</span></span><button type="button" class="btn continue-campaign" data-campaign="Miasto bez snów" data-scene-index="0">Kontynuuj</button></div>
     </div>
+    <div class="app-notice" id="saves-notice" aria-live="polite"></div>
   </section>
 
   <section class="app-screen" data-screen="inventory" hidden>
     <div class="app-header"><div><h1>Ekwipunek bohatera</h1><div class="app-muted">Przeciągnij przedmiot z plecaka na pasujące miejsce.</div></div><button class="btn" type="button" id="inventory-back">← Wróć do gry</button></div>
     <div class="inventory-layout">
       <section class="app-panel"><h2>Wyposażenie</h2><div class="equipment-grid">
-        <div class="equip-slot" data-slot="weapon"><span class="equip-slot-title">⚔️ Broń</span><div class="equip-slot-content"></div></div>
+        <div class="equip-slot" data-slot="helmet"><span class="equip-slot-title">🪖 Hełm</span><div class="equip-slot-content"></div></div>
         <div class="equip-slot" data-slot="armor"><span class="equip-slot-title">🛡️ Zbroja</span><div class="equip-slot-content"></div></div>
+        <div class="equip-slot" data-slot="gloves"><span class="equip-slot-title">🧤 Rękawice</span><div class="equip-slot-content"></div></div>
+        <div class="equip-slot" data-slot="weapon"><span class="equip-slot-title">⚔️ Broń</span><div class="equip-slot-content"></div></div>
+        <div class="equip-slot" data-slot="boots"><span class="equip-slot-title">👢 Buty</span><div class="equip-slot-content"></div></div>
         <div class="equip-slot" data-slot="accessory"><span class="equip-slot-title">📿 Dodatek</span><div class="equip-slot-content"></div></div>
       </div></section>
       <section class="app-panel"><h2>Plecak</h2><div class="backpack" id="inventory-backpack" data-slot="backpack"></div><div class="app-notice" id="inventory-notice" aria-live="polite"></div></section>
@@ -262,12 +266,12 @@
 
 <section id="ai-gm-prototype" class="gm-shell" data-screen="game" aria-label="Prototyp rozgrywki AI Mistrza Gry" hidden>
   <style>
-    #ai-gm-prototype { color:var(--foreground); width:min(100%,1060px); margin:0 auto; }
+    #ai-gm-prototype { color:var(--foreground); width:min(100%,1320px); margin:0 auto; }
     #ai-gm-prototype * { box-sizing: border-box; }
     #ai-gm-prototype .gm-top { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:16px; }
     #ai-gm-prototype .gm-title { margin:0 0 4px; }
     #ai-gm-prototype .gm-sub { color:var(--muted-foreground); }
-    #ai-gm-prototype .gm-layout { display:grid; grid-template-columns:minmax(0, 1fr) 210px; gap:16px; align-items:start; }
+    #ai-gm-prototype .gm-layout { display:grid; grid-template-columns:minmax(0, 1fr) 330px; gap:16px; align-items:start; }
     #ai-gm-prototype .gm-stage { min-width:0; }
     #ai-gm-prototype .gm-scene { padding:20px; border:1px solid var(--border); border-radius:16px; background:var(--card); color:var(--card-foreground); }
     #ai-gm-prototype .gm-meta { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:14px; }
@@ -282,6 +286,23 @@
     #ai-gm-prototype .gm-custom textarea { width:100%; min-height:74px; resize:vertical; }
     #ai-gm-prototype .gm-custom-footer { display:flex; justify-content:space-between; gap:10px; align-items:center; margin-top:8px; }
     #ai-gm-prototype .gm-side { display:grid; gap:14px; }
+    #ai-gm-prototype .gm-character-panel { padding:14px; border:1px solid var(--border); border-radius:16px; background:var(--card); }
+    #ai-gm-prototype .gm-hp-head { display:flex; justify-content:space-between; gap:10px; align-items:center; }
+    #ai-gm-prototype .gm-hp-track { height:10px; margin:8px 0 12px; overflow:hidden; border-radius:999px; background:var(--muted); }
+    #ai-gm-prototype .gm-hp-track span { display:block; height:100%; background:linear-gradient(90deg,#b91c1c,#ef4444); transition:width .25s ease; }
+    #ai-gm-prototype .gm-stat-strip { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; margin-bottom:12px; }
+    #ai-gm-prototype .gm-stat-chip { padding:7px 4px; border:1px solid var(--border); border-radius:9px; text-align:center; background:var(--background); }
+    #ai-gm-prototype .gm-stat-chip strong { display:block; color:var(--primary); }
+    #ai-gm-prototype .gm-equipment { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; }
+    #ai-gm-prototype .gm-equipment .equip-slot { min-height:82px; padding:6px; border-radius:10px; }
+    #ai-gm-prototype .gm-equipment .equip-slot-title { margin-bottom:5px; font-size:.72rem; }
+    #ai-gm-prototype .gm-equipment .item-card { padding:6px; font-size:.72rem; }
+    #ai-gm-prototype .gm-equipment .item-icon { display:block; margin:0; font-size:1.2rem; }
+    #ai-gm-prototype .gm-equipment .item-card small { display:none; }
+    #ai-gm-prototype .gm-backpack { min-height:94px; grid-template-columns:repeat(3,minmax(0,1fr)); padding:6px; gap:6px; }
+    #ai-gm-prototype .gm-backpack .item-card { padding:6px; font-size:0; text-align:center; }
+    #ai-gm-prototype .gm-backpack .item-card .item-icon { display:block; margin:0; font-size:1.35rem; }
+    #ai-gm-prototype .gm-backpack .item-card small { display:none; }
     #ai-gm-prototype .gm-section-title { margin:0 0 8px; }
     #ai-gm-prototype .gm-player-list { display:grid; gap:7px; }
     #ai-gm-prototype .gm-player { display:grid; grid-template-columns:34px 1fr auto; gap:8px; align-items:center; padding:8px; border:1px solid var(--border); border-radius:12px; }
@@ -308,6 +329,12 @@
     #ai-gm-prototype .dice-controls { display:grid; grid-template-columns:1fr auto; gap:7px; }
     #ai-gm-prototype .dice-controls select { border:1px solid var(--input); border-radius:9px; padding:8px; background:var(--background); color:var(--foreground); }
     #ai-gm-prototype .dice-result { min-height:2.6em; text-align:center; color:var(--primary); }
+    #ai-gm-prototype .gm-map-panel { margin-top:14px; padding:16px; border:1px solid var(--border); border-radius:16px; background:var(--card); }
+    #ai-gm-prototype .dungeon-map { display:grid; grid-template-columns:repeat(10,minmax(0,1fr)); gap:3px; width:100%; max-width:700px; margin:10px auto 0; }
+    #ai-gm-prototype .map-tile { position:relative; aspect-ratio:1; display:grid; place-items:center; border-radius:3px; background:#151b24; color:white; font-size:clamp(.72rem,2vw,1.15rem); box-shadow:inset 0 0 0 1px #ffffff0d; }
+    #ai-gm-prototype .map-tile.wall { background:#40382f; box-shadow:inset 0 0 0 2px #6b5b49; }
+    #ai-gm-prototype .map-tile.fog { filter:brightness(.35); }
+    #ai-gm-prototype .map-tile.party { background:#7c3aed; box-shadow:0 0 14px #8b5cf6,inset 0 0 0 2px #ddd6fe; animation:gm-pulse 1.8s ease-in-out infinite; }
     @keyframes gm-pulse { 50% { opacity:.55; } }
     @keyframes dice-roll-3d { 0%{transform:rotateX(0) rotateY(0) rotateZ(0) scale(.85)} 35%{transform:rotateX(420deg) rotateY(230deg) rotateZ(130deg) scale(1.12)} 70%{transform:rotateX(720deg) rotateY(560deg) rotateZ(310deg)} 100%{transform:rotateX(1066deg) rotateY(744deg) rotateZ(360deg)} }
     @media (max-width:640px) {
@@ -325,7 +352,6 @@
     <div class="viz-row">
       <span class="viz-badge" id="gm-tokens">◆ 8 tokenów</span>
       <span class="viz-badge" id="gm-online">● 1 gracz online</span>
-      <button type="button" class="btn" data-go="inventory">🎒 Ekwipunek</button>
       <button type="button" class="btn" id="gm-speech-toggle">🔊 Głos włączony</button>
       <button type="button" class="btn" data-go="menu">Zapisz i wyjdź</button>
     </div>
@@ -360,9 +386,29 @@
         </div>
         <div class="gm-toast text-small" id="gm-toast" aria-live="polite"></div>
       </article>
+      <section class="gm-map-panel" aria-label="Mapa podziemi">
+        <div class="viz-row" style="justify-content:space-between"><h3 class="gm-section-title">Mapa drużyny</h3><span class="text-small gm-sub">Widok odkrytych korytarzy</span></div>
+        <div class="dungeon-map" id="dungeon-map" role="grid" aria-label="Mapa podzielona na kwadraty"></div>
+      </section>
     </div>
 
     <aside class="gm-side" aria-label="Panel sesji">
+      <section class="gm-character-panel" id="gm-character-panel">
+        <div class="gm-hp-head"><h3 class="gm-section-title" id="gm-character-name">Bohater</h3><strong id="gm-hp-value">— / — PŻ</strong></div>
+        <div class="gm-hp-track" aria-label="Punkty życia"><span id="gm-hp-bar" style="width:0%"></span></div>
+        <div class="gm-stat-strip" id="gm-character-stats"></div>
+        <h4 class="gm-section-title">Wyposażenie</h4>
+        <div class="gm-equipment">
+          <div class="equip-slot" data-slot="helmet"><span class="equip-slot-title">🪖 Hełm</span><div class="equip-slot-content"></div></div>
+          <div class="equip-slot" data-slot="armor"><span class="equip-slot-title">🛡️ Zbroja</span><div class="equip-slot-content"></div></div>
+          <div class="equip-slot" data-slot="gloves"><span class="equip-slot-title">🧤 Rękawice</span><div class="equip-slot-content"></div></div>
+          <div class="equip-slot" data-slot="weapon"><span class="equip-slot-title">⚔️ Broń</span><div class="equip-slot-content"></div></div>
+          <div class="equip-slot" data-slot="boots"><span class="equip-slot-title">👢 Buty</span><div class="equip-slot-content"></div></div>
+          <div class="equip-slot" data-slot="accessory"><span class="equip-slot-title">📿 Dodatek</span><div class="equip-slot-content"></div></div>
+        </div>
+        <h4 class="gm-section-title" style="margin-top:12px">Plecak</h4>
+        <div class="backpack gm-backpack" id="gm-backpack" data-slot="backpack"></div>
+      </section>
       <section>
         <h3 class="gm-section-title">Drużyna</h3>
         <div class="gm-player-list" id="gm-players"></div>
@@ -380,15 +426,15 @@
           <div class="gm-log-entry">Drużyna przyjęła zlecenie burmistrza.</div>
         </div>
       </section>
-      <section class="app-panel" style="padding:12px">
-        <h3 class="gm-section-title">Rzut kostką</h3>
+      <section class="app-panel" id="dice-panel" style="padding:12px" hidden>
+        <h3 class="gm-section-title" id="dice-title">Mistrz Gry wymaga rzutu</h3>
         <div class="dice-stage" aria-label="Trójwymiarowa kostka">
           <div class="dice-cube" id="dice-cube">
             <span class="dice-face dice-front" id="dice-front">20</span><span class="dice-face dice-back">2</span><span class="dice-face dice-right">3</span><span class="dice-face dice-left">4</span><span class="dice-face dice-top">5</span><span class="dice-face dice-bottom">6</span>
           </div>
         </div>
-        <div class="dice-controls"><select id="dice-sides" aria-label="Rodzaj kostki"><option value="4">k4</option><option value="6">k6</option><option value="8">k8</option><option value="10">k10</option><option value="12">k12</option><option value="20" selected>k20</option></select><button type="button" class="btn btn-primary" id="dice-roll">Rzuć</button></div>
-        <div class="dice-result text-small" id="dice-result" aria-live="polite">Wybierz kostkę i rzuć.</div>
+        <div class="dice-controls"><button type="button" class="btn btn-primary" id="dice-roll">Rzuć k20</button></div>
+        <div class="dice-result text-small" id="dice-result" aria-live="polite">Wykonaj wymagany test.</div>
       </section>
     </aside>
   </div>
@@ -487,6 +533,11 @@
       const diceCube = root.querySelector("#dice-cube");
       const diceFront = root.querySelector("#dice-front");
       const diceResult = root.querySelector("#dice-result");
+      const dicePanel = root.querySelector("#dice-panel");
+      const dungeonLayout = [
+        "##########", "#...##...#", "#.#....#.#", "#.#.##...#",
+        "#...#....#", "##......##", "#........#", "##########"
+      ];
 
       function activeScene() {
         return currentGameState?.dynamicScene || scenes[sceneIndex];
@@ -564,9 +615,10 @@
       function renderScene() {
         const scene = activeScene();
         const myId = socket?.id;
-        const myTurn = !currentGameState || currentGameState.requiredPlayerIds.includes(myId);
-        const alreadyAnswered = Boolean(currentGameState?.respondedPlayerIds.includes(myId));
-        const interactionLocked = !myTurn || alreadyAnswered || Boolean(currentGameState?.generating);
+        const myTurn = !currentGameState || (currentGameState.requiredPlayerIds || []).includes(myId);
+        const alreadyAnswered = Boolean((currentGameState?.respondedPlayerIds || []).includes(myId));
+        const pendingRoll = currentGameState?.diceChallenge && !currentGameState.diceChallenge.resolved;
+        const interactionLocked = !myTurn || alreadyAnswered || Boolean(currentGameState?.generating) || Boolean(pendingRoll);
         root.querySelector("#gm-chapter").textContent = "Scena " + (sceneIndex + 1) + " z " + scenes.length;
         root.querySelector("#gm-target").textContent = currentGameState?.targetMode === "player" ? "Pytanie do: " + currentGameState.targetPlayerName : "Pytanie do wszystkich";
         root.querySelector("#gm-narrative").textContent = scene.narrative;
@@ -593,8 +645,14 @@
         voiceBtn.classList.remove("gm-listening");
         voiceBtn.textContent = "🎙 Powiedz";
         root.querySelector("#gm-custom-open").disabled = interactionLocked;
-        root.querySelector("#gm-toast").textContent = currentGameState?.generating ? "✦ Mistrz Gry analizuje dotychczasową fabułę i dostosowuje kolejną scenę…" : (alreadyAnswered ? "Twoja odpowiedź została zapisana. Czekamy na pozostałych graczy…" : (!myTurn ? "Mistrz Gry czeka teraz na odpowiedź wskazanego gracza." : ""));
+        root.querySelector("#gm-toast").textContent = currentGameState?.generating
+          ? "✦ Mistrz Gry analizuje dotychczasową fabułę i dostosowuje kolejną scenę…"
+          : (pendingRoll
+            ? (pendingRoll.playerId === myId ? "🎲 Mistrz Gry wymaga od ciebie rzutu przed podjęciem decyzji." : "Czekamy, aż " + pendingRoll.playerName + " wykona wymagany rzut.")
+            : (alreadyAnswered ? "Twoja odpowiedź została zapisana. Czekamy na pozostałych graczy…" : (!myTurn ? "Mistrz Gry czeka teraz na odpowiedź wskazanego gracza." : "")));
         renderPlayers();
+        renderDiceChallenge();
+        renderDungeonMap();
         if (!root.hidden) window.setTimeout(function () { speakScene(false); }, 120);
       }
 
@@ -612,9 +670,14 @@
         root.querySelector("#gm-toast").textContent = "Wysyłanie decyzji do całej drużyny…";
         if (socket && socket.connected && window.currentRoomCode) {
           socket.emit("game:choice", { choice: choice, custom: Boolean(custom) }, function (result) {
-            if (!result?.ok) root.querySelector("#gm-toast").textContent = result?.error || "Nie udało się wysłać decyzji.";
+            if (!result?.ok && result?.code === "ROOM_INACTIVE") window.handleExpiredRoom?.(result.error);
+            else if (!result?.ok) root.querySelector("#gm-toast").textContent = result?.error || "Nie udało się wysłać decyzji.";
             else if (Number.isFinite(result.tokens)) window.setAccountTokens(result.tokens);
           });
+          return;
+        }
+        if (currentGameState) {
+          root.querySelector("#gm-toast").textContent = "Połączenie z sesją jest przywracane. Spróbuj ponownie za chwilę.";
           return;
         }
         if (custom) tokens -= 1;
@@ -686,8 +749,42 @@
 
       root.addEventListener("aigmv2:speak", function () { speakScene(true); });
 
+      function renderDiceChallenge() {
+        const challenge = currentGameState?.diceChallenge;
+        const mine = challenge && challenge.playerId === socket?.id;
+        if (!mine || challenge.resolved) {
+          if (!diceCube.classList.contains("is-rolling")) dicePanel.hidden = true;
+          return;
+        }
+        dicePanel.hidden = false;
+        root.querySelector("#dice-title").textContent = "Test: " + challenge.statLabel + " · próg " + challenge.dc;
+        diceResult.textContent = "Rzuć k20. Do wyniku dodamy twoją statystykę " + challenge.statLabel.toLowerCase() + ".";
+      }
+
+      function renderDungeonMap() {
+        const map = root.querySelector("#dungeon-map");
+        const position = currentGameState?.partyPosition || { x: 1, y: 6 };
+        const reveal = Math.max(2, Number(currentGameState?.mapStep || 0) + 2);
+        map.innerHTML = "";
+        dungeonLayout.forEach(function (row, y) {
+          Array.from(row).forEach(function (kind, x) {
+            const tile = document.createElement("span");
+            const distance = Math.abs(x - position.x) + Math.abs(y - position.y);
+            tile.className = "map-tile " + (kind === "#" ? "wall" : "floor") + (distance > reveal ? " fog" : "");
+            tile.setAttribute("role", "gridcell");
+            if (x === position.x && y === position.y) {
+              tile.classList.add("party");
+              tile.textContent = "👥";
+              tile.setAttribute("aria-label", "Pozycja drużyny");
+            }
+            map.appendChild(tile);
+          });
+        });
+      }
+
       function showDiceRoll(roll) {
-        if (!roll) return;
+        if (!roll || roll.playerId !== socket?.id) return;
+        dicePanel.hidden = false;
         diceFront.textContent = roll.result;
         diceCube.classList.remove("is-rolling");
         void diceCube.offsetWidth;
@@ -695,7 +792,8 @@
         diceResult.textContent = roll.playerName + " rzuca k" + roll.sides + "…";
         window.setTimeout(function () {
           diceCube.classList.remove("is-rolling");
-          diceResult.textContent = roll.playerName + " wyrzuca " + roll.result + " na k" + roll.sides + ".";
+          diceResult.textContent = roll.result + " + " + roll.modifier + " = " + roll.total + " · " + (roll.success ? "sukces" : "niepowodzenie") + " (próg " + roll.dc + ")";
+          window.setTimeout(function () { dicePanel.hidden = true; }, 1500);
         }, 1000);
       }
 
@@ -706,7 +804,7 @@
         }
         const button = root.querySelector("#dice-roll");
         button.disabled = true;
-        socket.emit("dice:roll", { sides: Number(root.querySelector("#dice-sides").value) }, function (result) {
+        socket.emit("dice:roll", {}, function (result) {
           button.disabled = false;
           if (!result?.ok) diceResult.textContent = result?.error || "Rzut nie powiódł się.";
         });
@@ -734,7 +832,7 @@
         });
         if (state.settings?.campaign) root.querySelector(".gm-title").textContent = state.settings.campaign;
         if (state.lastDecision) addLog(state.lastDecision.playerName + ": " + state.lastDecision.choice);
-        if (state.lastRoll) showDiceRoll(state.lastRoll);
+        window.renderGameCharacter?.(state);
         if (start) lastSpokenScene = -1;
         renderScene();
       };
@@ -772,6 +870,7 @@
     const itemCatalog = {
       iron_sword: { name: "Żelazny miecz", icon: "⚔️", bonus: "+2 Siła" }, hunting_bow: { name: "Łuk myśliwski", icon: "🏹", bonus: "+2 Zręczność" }, oak_staff: { name: "Dębowy kostur", icon: "🪄", bonus: "+2 Wiedza" },
       chainmail: { name: "Kolczuga", icon: "🛡️", bonus: "+2 Wytrzymałość" }, leather_armor: { name: "Skórzana zbroja", icon: "🥋", bonus: "+1 Zręczność" }, mystic_cloak: { name: "Płaszcz mistyka", icon: "🧥", bonus: "+1 Wiedza" },
+      iron_helmet: { name: "Żelazny hełm", icon: "🪖", bonus: "+1 Wytrzymałość" }, leather_gloves: { name: "Skórzane rękawice", icon: "🧤", bonus: "+1 Zręczność" }, travel_boots: { name: "Buty wędrowca", icon: "👢", bonus: "+1 Zręczność" },
       moon_amulet: { name: "Amulet księżyca", icon: "📿", bonus: "+1 Szczęście" }, healing_potion: { name: "Mikstura leczenia", icon: "🧪", bonus: "Odnawia zdrowie" }
     };
     try { authSession = JSON.parse(localStorage.getItem("aigmv2-auth-session") || "null"); } catch {}
@@ -956,24 +1055,43 @@
       const character = myCharacter();
       const notice = document.querySelector("#inventory-notice");
       document.querySelectorAll(".equip-slot-content").forEach(function (container) { container.innerHTML = ""; });
-      const backpack = document.querySelector("#inventory-backpack");
-      backpack.innerHTML = "";
+      const backpacks = document.querySelectorAll(".backpack");
+      backpacks.forEach(function (backpack) { backpack.innerHTML = ""; });
       if (!character) {
         notice.textContent = "Najpierw utwórz postać i rozdziel jej statystyki.";
         return;
       }
       notice.textContent = "";
       (character.inventory || []).forEach(function (itemId) {
-        const card = makeItemCard(itemId);
-        if (card) backpack.appendChild(card);
+        backpacks.forEach(function (backpack) {
+          const card = makeItemCard(itemId);
+          if (card) backpack.appendChild(card);
+        });
       });
       Object.entries(character.equipment || {}).forEach(function ([slot, itemId]) {
         if (!itemId) return;
-        const card = makeItemCard(itemId);
-        const container = document.querySelector('.equip-slot[data-slot="' + slot + '"] .equip-slot-content');
-        if (card && container) container.appendChild(card);
+        document.querySelectorAll('.equip-slot[data-slot="' + slot + '"] .equip-slot-content').forEach(function (container) {
+          const card = makeItemCard(itemId);
+          if (card) container.appendChild(card);
+        });
       });
     }
+
+    window.renderGameCharacter = function (state) {
+      currentRoom = state;
+      const character = myCharacter();
+      renderInventory();
+      if (!character) return;
+      const hp = Number(character.health || character.maxHealth || 0);
+      const maxHp = Math.max(1, Number(character.maxHealth || hp || 1));
+      document.querySelector("#gm-character-name").textContent = character.name + " · " + character.characterClass;
+      document.querySelector("#gm-hp-value").textContent = hp + " / " + maxHp + " PŻ";
+      document.querySelector("#gm-hp-bar").style.width = Math.max(0, Math.min(100, hp / maxHp * 100)) + "%";
+      const labels = { strength: "SIŁ", dexterity: "ZRĘ", endurance: "WYT", knowledge: "WIE", charisma: "CHA", luck: "SZCZ" };
+      document.querySelector("#gm-character-stats").innerHTML = Object.entries(labels).map(function ([key, label]) {
+        return '<span class="gm-stat-chip"><small>' + label + '</small><strong>' + Number(character.stats?.[key] || 1) + '</strong></span>';
+      }).join("");
+    };
 
     function moveItem(itemId, targetSlot) {
       const notice = document.querySelector("#inventory-notice");
@@ -1033,6 +1151,37 @@
       window.scrollTo(0, 0);
     }
     window.showAppScreen = showScreen;
+
+    window.handleExpiredRoom = function (message) {
+      currentRoom = null;
+      window.currentRoomCode = null;
+      localStorage.removeItem("aigmv2-room-code");
+      showScreen("saves");
+      const notice = document.querySelector("#saves-notice");
+      if (notice) notice.textContent = message || "Poprzednia sesja wygasła. Uruchom kampanię ponownie.";
+    };
+
+    document.querySelectorAll(".continue-campaign").forEach(function (button) {
+      button.addEventListener("click", async function () {
+        if (!(await ensureAccount())) return;
+        if (!socket?.connected) return alert("Serwer jeszcze się uruchamia. Spróbuj ponownie za chwilę.");
+        button.disabled = true;
+        socket.emit("campaign:continue", {
+          campaign: button.dataset.campaign,
+          sceneIndex: Number(button.dataset.sceneIndex) || 0,
+          playerName: localStorage.getItem("aigmv2-player-name") || activePlayerName,
+          sessionToken: window.playerSessionToken,
+          accessToken: window.getAccessToken()
+        }, function (result) {
+          button.disabled = false;
+          if (!result?.ok) return alert(result?.error || "Nie udało się wznowić kampanii.");
+          localStorage.setItem("aigmv2-room-code", result.room.code);
+          renderLobby(result.room);
+          showScreen("game");
+          window.applyGameState?.(result.room, true);
+        });
+      });
+    });
 
     document.addEventListener("click", function (event) {
       const goButton = event.target.closest("[data-go]");
@@ -1165,7 +1314,7 @@
         if (savedCode) {
           socket.emit("room:resume", { code: savedCode, sessionToken: window.playerSessionToken, accessToken: window.getAccessToken() }, function (result) {
             if (!result?.ok) {
-              localStorage.removeItem("aigmv2-room-code");
+              window.handleExpiredRoom("Poprzednia sesja online wygasła po uśpieniu lub restarcie serwera. Wybierz kampanię, aby utworzyć nową aktywną sesję.");
               return;
             }
             activePlayerName = localStorage.getItem("aigmv2-player-name") || activePlayerName;
@@ -1186,7 +1335,8 @@
       });
       socket.on("room:update", function (room) {
         renderLobby(room);
-        if (!document.querySelector('[data-screen="inventory"]').hidden) renderInventory();
+        if (room.status === "playing") window.renderGameCharacter?.(room);
+        else if (!document.querySelector('[data-screen="inventory"]').hidden) renderInventory();
       });
       window.setInterval(function () {
         if (socket.connected && currentRoom) {

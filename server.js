@@ -48,6 +48,19 @@ const BASE_SCENES = [
 ];
 const SCENE_COUNT = BASE_SCENES.length;
 const SCENE_TARGETS = ["all", 0, 1, "all", "all"];
+const SCENE_ROLLS = [
+  null,
+  { stat: "knowledge", statLabel: "Wiedza", dc: 10 },
+  { stat: "endurance", statLabel: "Wytrzymałość", dc: 12 },
+  { stat: "luck", statLabel: "Szczęście", dc: 13 },
+  null
+];
+const EQUIPMENT_SLOTS = ["helmet", "armor", "gloves", "weapon", "boots", "accessory"];
+const PARTY_PATH = [
+  { x: 1, y: 6 }, { x: 2, y: 6 }, { x: 3, y: 6 }, { x: 3, y: 5 },
+  { x: 4, y: 5 }, { x: 5, y: 5 }, { x: 5, y: 4 }, { x: 6, y: 4 },
+  { x: 7, y: 4 }, { x: 7, y: 3 }, { x: 8, y: 3 }, { x: 8, y: 2 }
+];
 const ITEM_CATALOG = {
   iron_sword: { id: "iron_sword", name: "Żelazny miecz", icon: "⚔️", slot: "weapon", bonus: "+2 Siła" },
   hunting_bow: { id: "hunting_bow", name: "Łuk myśliwski", icon: "🏹", slot: "weapon", bonus: "+2 Zręczność" },
@@ -55,6 +68,9 @@ const ITEM_CATALOG = {
   chainmail: { id: "chainmail", name: "Kolczuga", icon: "🛡️", slot: "armor", bonus: "+2 Wytrzymałość" },
   leather_armor: { id: "leather_armor", name: "Skórzana zbroja", icon: "🥋", slot: "armor", bonus: "+1 Zręczność" },
   mystic_cloak: { id: "mystic_cloak", name: "Płaszcz mistyka", icon: "🧥", slot: "armor", bonus: "+1 Wiedza" },
+  iron_helmet: { id: "iron_helmet", name: "Żelazny hełm", icon: "🪖", slot: "helmet", bonus: "+1 Wytrzymałość" },
+  leather_gloves: { id: "leather_gloves", name: "Skórzane rękawice", icon: "🧤", slot: "gloves", bonus: "+1 Zręczność" },
+  travel_boots: { id: "travel_boots", name: "Buty wędrowca", icon: "👢", slot: "boots", bonus: "+1 Zręczność" },
   moon_amulet: { id: "moon_amulet", name: "Amulet księżyca", icon: "📿", slot: "accessory", bonus: "+1 Szczęście" },
   healing_potion: { id: "healing_potion", name: "Mikstura leczenia", icon: "🧪", slot: "consumable", bonus: "Odnawia zdrowie" }
 };
@@ -170,9 +186,32 @@ function sanitizeStats(stats = {}) {
 }
 
 function startingInventory(characterClass) {
-  if (characterClass === "Tropiciel") return ["hunting_bow", "leather_armor", "healing_potion"];
-  if (characterClass === "Mistyk") return ["oak_staff", "mystic_cloak", "moon_amulet", "healing_potion"];
-  return ["iron_sword", "chainmail", "healing_potion"];
+  const common = ["iron_helmet", "leather_gloves", "travel_boots", "healing_potion"];
+  if (characterClass === "Tropiciel") return ["hunting_bow", "leather_armor", ...common];
+  if (characterClass === "Mistyk") return ["oak_staff", "mystic_cloak", "moon_amulet", ...common];
+  return ["iron_sword", "chainmail", ...common];
+}
+
+function emptyEquipment() {
+  return Object.fromEntries(EQUIPMENT_SLOTS.map((slot) => [slot, null]));
+}
+
+function healthFor(stats) {
+  return 20 + Number(stats?.endurance || 1) * 3;
+}
+
+function starterCharacter(name = "Aldren") {
+  return {
+    name: cleanText(name, 30) || "Aldren",
+    characterClass: "Strażnik",
+    origin: "Wędrowiec",
+    story: "Strażnik, który odpowiedział na wezwanie Żelaznej Doliny.",
+    stats: { strength: 4, dexterity: 2, endurance: 3, knowledge: 2, charisma: 2, luck: 1 },
+    inventory: startingInventory("Strażnik"),
+    equipment: emptyEquipment(),
+    health: 29,
+    maxHealth: 29
+  };
 }
 
 function cleanScene(candidate, fallback) {
@@ -295,6 +334,34 @@ function requiredPlayerIds(room) {
   return target.mode === "all" ? room.players.map((player) => player.id) : [target.playerId].filter(Boolean);
 }
 
+function createDiceChallenge(room) {
+  const rule = SCENE_ROLLS[room.sceneIndex];
+  if (!rule || room.players.length === 0) return null;
+  const target = sceneTarget(room);
+  const player = target.mode === "player"
+    ? room.players.find((item) => item.id === target.playerId)
+    : room.players[room.mapStep % room.players.length];
+  if (!player) return null;
+  return {
+    id: crypto.randomUUID(),
+    playerId: player.id,
+    playerName: player.character?.name || player.name,
+    stat: rule.stat,
+    statLabel: rule.statLabel,
+    dc: rule.dc,
+    sides: 20,
+    resolved: false,
+    result: null,
+    total: null,
+    success: null
+  };
+}
+
+function setPartyStep(room, step) {
+  room.mapStep = Math.max(0, Number(step) || 0);
+  room.partyPosition = PARTY_PATH[Math.min(room.mapStep, PARTY_PATH.length - 1)];
+}
+
 function publicRoom(room) {
   const target = sceneTarget(room);
   return {
@@ -307,6 +374,9 @@ function publicRoom(room) {
     generating: Boolean(room.generating),
     lastDecision: room.lastDecision,
     lastRoll: room.lastRoll,
+    diceChallenge: room.diceChallenge,
+    mapStep: room.mapStep,
+    partyPosition: room.partyPosition,
     targetMode: target.mode,
     targetPlayerId: target.playerId,
     targetPlayerName: target.playerName,
@@ -478,6 +548,7 @@ io.on("connection", (socket) => {
     room.pendingResponses.forEach((response) => {
       if (response.playerId === previousId) response.playerId = socket.id;
     });
+    if (room.diceChallenge?.playerId === previousId) room.diceChallenge.playerId = socket.id;
     if (room.hostToken === sessionToken) room.hostId = socket.id;
     socket.join(code);
     socket.data.roomCode = code;
@@ -514,7 +585,9 @@ io.on("connection", (socket) => {
       story: cleanText(payload.character?.story, 500),
       stats,
       inventory: startingInventory(characterClass),
-      equipment: { weapon: null, armor: null, accessory: null }
+      equipment: emptyEquipment(),
+      health: healthFor(stats),
+      maxHealth: healthFor(stats)
     };
     player.ready = true;
     acknowledge({ ok: true });
@@ -532,7 +605,7 @@ io.on("connection", (socket) => {
     if (!item) return acknowledge({ ok: false, error: "Nieznany przedmiot." });
 
     character.inventory = Array.isArray(character.inventory) ? character.inventory : [];
-    character.equipment = character.equipment || { weapon: null, armor: null, accessory: null };
+    character.equipment = { ...emptyEquipment(), ...(character.equipment || {}) };
     const equippedSlot = Object.keys(character.equipment).find((slot) => character.equipment[slot] === itemId);
     const inBackpack = character.inventory.includes(itemId);
     if (!equippedSlot && !inBackpack) return acknowledge({ ok: false, error: "Nie masz tego przedmiotu." });
@@ -543,7 +616,7 @@ io.on("connection", (socket) => {
         if (!character.inventory.includes(itemId)) character.inventory.push(itemId);
       }
     } else {
-      if (!["weapon", "armor", "accessory"].includes(targetSlot) || item.slot !== targetSlot) {
+      if (!EQUIPMENT_SLOTS.includes(targetSlot) || item.slot !== targetSlot) {
         return acknowledge({ ok: false, error: "Ten przedmiot nie pasuje do wybranego miejsca." });
       }
       if (equippedSlot) character.equipment[equippedSlot] = null;
@@ -556,23 +629,93 @@ io.on("connection", (socket) => {
     emitRoom(room);
   });
 
-  socket.on("dice:roll", (payload = {}, acknowledge = () => {}) => {
+  socket.on("dice:roll", (_payload = {}, acknowledge = () => {}) => {
     const room = rooms.get(socket.data.roomCode);
     const player = room?.players.find((item) => item.id === socket.id);
-    if (!room || !player) return acknowledge({ ok: false, error: "Nie jesteś w aktywnej drużynie." });
-    const sides = [4, 6, 8, 10, 12, 20].includes(Number(payload.sides)) ? Number(payload.sides) : 20;
+    if (!room || room.status !== "playing" || !player) return acknowledge({ ok: false, error: "Nie jesteś w aktywnej drużynie." });
+    const challenge = room.diceChallenge;
+    if (!challenge || challenge.resolved) return acknowledge({ ok: false, error: "Mistrz Gry nie wymaga teraz rzutu." });
+    if (challenge.playerId !== socket.id) return acknowledge({ ok: false, error: `Ten rzut wykonuje ${challenge.playerName}.` });
     if (Date.now() - Number(player.lastDiceRollAt || 0) < 1200) return acknowledge({ ok: false, error: "Kostka jeszcze się toczy." });
     player.lastDiceRollAt = Date.now();
+    const sides = challenge.sides;
+    const result = crypto.randomInt(1, sides + 1);
+    const modifier = Number(player.character?.stats?.[challenge.stat] || 1);
+    const total = result + modifier;
+    challenge.resolved = true;
+    challenge.result = result;
+    challenge.modifier = modifier;
+    challenge.total = total;
+    challenge.success = total >= challenge.dc;
     room.lastRoll = {
-      id: crypto.randomUUID(),
+      id: challenge.id,
       playerId: player.id,
       playerName: player.character?.name || player.name,
       sides,
-      result: crypto.randomInt(1, sides + 1),
+      result,
+      modifier,
+      total,
+      dc: challenge.dc,
+      statLabel: challenge.statLabel,
+      success: challenge.success,
       createdAt: Date.now()
     };
     acknowledge({ ok: true, roll: room.lastRoll });
     io.to(room.code).emit("dice:result", room.lastRoll);
+    io.to(room.code).emit("game:update", publicRoom(room));
+    emitRoom(room);
+  });
+
+  socket.on("campaign:continue", async (payload = {}, acknowledge = () => {}) => {
+    let user;
+    try { user = await getSupabaseUser(payload.accessToken); }
+    catch (error) { return acknowledge({ ok: false, error: error.message }); }
+    leaveCurrentRoom(socket);
+    const code = makeRoomCode();
+    const sessionToken = cleanText(payload.sessionToken || socket.handshake.auth?.sessionToken, 64) || `${socket.id}-${Date.now()}`;
+    const playerName = cleanText(payload.playerName, 24) || "Gracz";
+    const player = {
+      id: socket.id,
+      sessionToken,
+      userId: user.id,
+      name: playerName,
+      character: starterCharacter(payload.characterName),
+      ready: true,
+      connected: true,
+      lastSeen: Date.now()
+    };
+    const room = {
+      code,
+      hostId: socket.id,
+      hostToken: sessionToken,
+      settings: {
+        campaign: cleanText(payload.campaign, 80) || "Cień nad Żelazną Doliną",
+        difficulty: "Średni",
+        maxPlayers: MAX_PLAYERS,
+        characterMode: "Tworzone przez graczy"
+      },
+      players: [player],
+      status: "playing",
+      sceneIndex: Math.min(SCENE_COUNT - 1, Math.max(0, Number(payload.sceneIndex) || 0)),
+      dynamicScene: null,
+      storyHistory: [],
+      generating: false,
+      lastRoll: null,
+      lastDecision: null,
+      pendingResponses: [],
+      diceChallenge: null,
+      mapStep: 0,
+      partyPosition: PARTY_PATH[0]
+    };
+    room.diceChallenge = createDiceChallenge(room);
+    rooms.set(code, room);
+    socket.join(code);
+    socket.data.roomCode = code;
+    socket.data.sessionToken = sessionToken;
+    socket.data.userId = user.id;
+    const state = publicRoom(room);
+    acknowledge({ ok: true, room: state });
+    io.to(code).emit("game:start", state);
     emitRoom(room);
   });
 
@@ -584,6 +727,12 @@ io.on("connection", (socket) => {
     if (room.settings.characterMode === "Tworzone przez graczy" && room.players.some((player) => !player.ready)) {
       return acknowledge({ ok: false, error: "Poczekaj, aż każdy gracz stworzy postać." });
     }
+    room.players.forEach((player) => {
+      if (!player.character) {
+        player.character = starterCharacter(player.name);
+        player.ready = true;
+      }
+    });
     room.status = "playing";
     room.sceneIndex = 0;
     room.dynamicScene = null;
@@ -592,6 +741,8 @@ io.on("connection", (socket) => {
     room.lastRoll = null;
     room.lastDecision = null;
     room.pendingResponses = [];
+    room.diceChallenge = null;
+    setPartyStep(room, 0);
     acknowledge({ ok: true });
     io.to(room.code).emit("game:start", publicRoom(room));
     emitRoom(room);
@@ -599,8 +750,9 @@ io.on("connection", (socket) => {
 
   socket.on("game:choice", async (payload = {}, acknowledge = () => {}) => {
     const room = rooms.get(socket.data.roomCode);
-    if (!room || room.status !== "playing") return acknowledge({ ok: false, error: "Kampania nie jest aktywna." });
+    if (!room || room.status !== "playing") return acknowledge({ ok: false, code: "ROOM_INACTIVE", error: "Sesja kampanii wygasła po restarcie serwera." });
     if (room.generating) return acknowledge({ ok: false, error: "Mistrz Gry dostosowuje teraz fabułę." });
+    if (room.diceChallenge && !room.diceChallenge.resolved) return acknowledge({ ok: false, error: "Najpierw wykonaj wymagany rzut kostką." });
     const choice = cleanText(payload.choice, 600);
     if (!choice) return acknowledge({ ok: false, error: "Odpowiedź jest pusta." });
     const custom = Boolean(payload.custom);
@@ -651,6 +803,8 @@ io.on("connection", (socket) => {
       }
       room.sceneIndex = nextIndex;
       room.pendingResponses = [];
+      setPartyStep(room, room.mapStep + 1);
+      room.diceChallenge = createDiceChallenge(room);
     }
     acknowledge({ ok: true, tokens: accountTokens });
     io.to(room.code).emit("game:update", publicRoom(room));
