@@ -15,7 +15,7 @@ npm start
 
 Następnie otwórz `http://localhost:3000`.
 
-## Konfiguracja Supabase
+## Konfiguracja Supabase i adaptacyjnej fabuły
 
 1. Utwórz projekt w Supabase.
 2. W **SQL Editor** uruchom cały plik `supabase.sql`.
@@ -23,9 +23,12 @@ Następnie otwórz `http://localhost:3000`.
    - `SUPABASE_URL`
    - `SUPABASE_ANON_KEY`
    - `SUPABASE_SERVICE_ROLE_KEY`
-4. Nigdy nie wpisuj klucza `service_role` do `index.html` lub publicznego repozytorium.
+   - `OPENAI_API_KEY` — opcjonalny, ale potrzebny do jakościowej adaptacji fabuły
+4. Nigdy nie wpisuj klucza `service_role` ani klucza OpenAI do `index.html` lub publicznego repozytorium.
 
 Nowe konto otrzymuje 8 tokenów. Własna odpowiedź odejmuje 1 token atomowo w bazie. Narrator korzysta z syntezy mowy wbudowanej w przeglądarkę i automatycznie preferuje polski męski głos Google. Jeśli urządzenie go nie udostępnia, wybierany jest najlepszy dostępny polski głos męski. Czytanie narracji nie wywołuje żadnego płatnego API.
+
+Własna odpowiedź uruchamia pojedyncze zapytanie tekstowe do taniego modelu `gpt-4o-mini`. Model otrzymuje profile bohaterów, sześć ostatnich scen oraz decyzje każdego gracza i zwraca ustrukturyzowaną kolejną scenę. Gotowe odpowiedzi nie uruchamiają modelu. Jeśli klucza brakuje lub API jest chwilowo niedostępne, serwer stosuje lokalną adaptację i gra trwa dalej.
 
 Aplikacja rejestruje również Service Workera. Po pierwszym otwarciu zapisuje interfejs lokalnie, dzięki czemu kolejne wejścia pokazują menu natychmiast, jeszcze zanim darmowy serwer Render zakończy wybudzanie.
 
@@ -37,10 +40,12 @@ Każda kolejna zmiana w gałęzi `main` uruchomi automatyczne wdrożenie.
 
 ## Obecny zakres
 
-- ekran startowy i ustawienia,
+- ekran startowy bez oddzielnej zakładki ustawień,
 - tworzenie nowej kampanii oraz dołączanie sześcioliterowym kodem,
 - konfiguracja liczby graczy, trudności, postaci i rodzaju kampanii,
-- lobby drużyny i kreator postaci,
+- lobby drużyny i dwuetapowy kreator postaci z rozdzielaniem statystyk,
+- plecak i wyposażenie postaci z przeciąganiem broni, zbroi oraz dodatków,
+- zsynchronizowane rzuty k4–k20 z animowaną kostką 3D,
 - prawdziwe pokoje multiplayer synchronizowane przez Socket.IO,
 - automatyczne ponowne łączenie i odzyskiwanie miejsca gracza przez 2 minuty,
 - heartbeat aktywnego pokoju zapobiegający uśpieniu serwera podczas gry,
@@ -55,6 +60,7 @@ Każda kolejna zmiana w gałęzi `main` uruchomi automatyczne wdrożenie.
 - pytania do całej drużyny i konkretnych graczy,
 - bezpłatne gotowe odpowiedzi,
 - własna odpowiedź tekstowa lub głosowa za 1 token,
+- adaptacja fabuły do własnych odpowiedzi z uwzględnieniem wcześniejszych scen i decyzji całej drużyny,
 - lista graczy, historia decyzji i postęp kampanii.
 
-Pokoje są obecnie przechowywane w pamięci serwera, więc znikają po jego restarcie. Trwałe konta, zapisy kampanii i generowanie nowych scen przez model AI wymagają bazy danych oraz integracji API.
+Pokoje, historia kampanii i ekwipunek aktywnej drużyny są obecnie przechowywane w pamięci serwera, więc znikają po jego restarcie. Konta i saldo tokenów pozostają trwałe w Supabase.

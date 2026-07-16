@@ -61,10 +61,25 @@
     .save-stack { display:grid; gap:10px; }
     .save-row { display:flex; justify-content:space-between; align-items:center; gap:14px; padding:14px; border:1px solid var(--border); border-radius:12px; }
     .app-notice { min-height:1.5em; margin-top:10px; color:var(--primary); }
+    .stat-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+    .stat-row { display:grid; grid-template-columns:1fr auto; align-items:center; gap:12px; padding:14px; border:1px solid var(--border); border-radius:12px; background:var(--background); }
+    .stat-controls { display:flex; align-items:center; gap:10px; }
+    .stat-value { min-width:28px; text-align:center; font-size:1.25rem; font-weight:700; color:var(--primary); }
+    .stat-controls .btn { width:36px; height:36px; min-width:0; padding:0; }
+    .inventory-layout { display:grid; grid-template-columns:minmax(250px,.8fr) minmax(0,1.2fr); gap:16px; }
+    .equipment-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+    .equip-slot,.backpack { min-height:150px; padding:12px; border:2px dashed var(--border); border-radius:14px; background:var(--background); transition:.15s ease; }
+    .equip-slot.is-over,.backpack.is-over { border-color:var(--primary); background:var(--accent); }
+    .equip-slot-title { display:block; margin-bottom:10px; color:var(--muted-foreground); text-align:center; }
+    .backpack { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); align-content:start; gap:9px; }
+    .item-card { padding:11px; border:1px solid var(--border); border-radius:11px; background:var(--secondary); cursor:grab; user-select:none; }
+    .item-card:active { cursor:grabbing; }
+    .item-icon { font-size:1.4rem; margin-right:7px; }
+    .item-card small { display:block; margin-top:4px; color:var(--muted-foreground); }
     @keyframes screen-in { from { opacity:0; transform:translateY(8px); } }
     @media (max-width:760px) {
       body { padding:20px 14px; }
-      .app-grid,.app-form-grid,.app-option-grid,.room-layout { grid-template-columns:1fr; }
+      .app-grid,.app-form-grid,.app-option-grid,.room-layout,.stat-grid,.inventory-layout,.equipment-grid { grid-template-columns:1fr; }
       .app-hero { padding-top:24px; }
       .save-row,.app-header { flex-direction:column; align-items:stretch; }
     }
@@ -90,7 +105,6 @@
     <span class="viz-badge">◆ <span id="account-tokens">—</span> tokenów</span>
     <span class="viz-badge" id="account-name">Gość</span>
     <button type="button" class="btn" id="logout-button" hidden>Wyloguj</button>
-    <button type="button" class="btn" data-go="settings">⚙ Ustawienia</button>
   </div>
 </header>
 
@@ -183,6 +197,7 @@
         <p>Każdy gracz tworzy własną postać. Mistrz Gry rozpocznie, gdy drużyna będzie gotowa.</p>
         <div class="app-actions">
           <button type="button" class="btn" data-go="character">Stwórz postać</button>
+          <button type="button" class="btn" data-go="inventory">🎒 Ekwipunek</button>
           <button type="button" class="btn btn-primary" id="start-game">Rozpocznij kampanię</button>
         </div>
       </aside>
@@ -204,7 +219,24 @@
         </div>
       </div>
       <label class="app-field" style="margin-top:16px">Historia postaci<textarea id="character-story" rows="4" placeholder="Co sprowadziło twoją postać do Żelaznej Doliny?"></textarea></label>
-      <div class="app-actions"><button type="button" class="btn btn-primary" id="save-character">Zapisz postać</button></div>
+      <div class="app-actions"><button type="button" class="btn btn-primary" id="go-character-stats">Dalej: statystyki →</button></div>
+    </div>
+  </section>
+
+  <section class="app-screen" data-screen="character-stats" hidden>
+    <div class="app-header"><div><h1>Statystyki bohatera</h1><div class="app-muted">Rozdziel 8 punktów. Każda cecha może mieć od 1 do 5.</div></div><button class="btn" type="button" data-go="character">← Dane postaci</button></div>
+    <div class="app-panel">
+      <div class="viz-row" style="justify-content:space-between;margin-bottom:16px"><strong>Pozostałe punkty</strong><span class="viz-badge" id="stat-points-left">8</span></div>
+      <div class="stat-grid" id="character-stats-grid">
+        <div class="stat-row" data-stat="strength"><span><strong>Siła</strong><br><span class="text-small app-muted">Walka i ciężkie przedmioty</span></span><span class="stat-controls"><button class="btn stat-minus" type="button">−</button><span class="stat-value">1</span><button class="btn stat-plus" type="button">+</button></span></div>
+        <div class="stat-row" data-stat="dexterity"><span><strong>Zręczność</strong><br><span class="text-small app-muted">Uniki, skradanie i refleks</span></span><span class="stat-controls"><button class="btn stat-minus" type="button">−</button><span class="stat-value">1</span><button class="btn stat-plus" type="button">+</button></span></div>
+        <div class="stat-row" data-stat="endurance"><span><strong>Wytrzymałość</strong><br><span class="text-small app-muted">Zdrowie i odporność</span></span><span class="stat-controls"><button class="btn stat-minus" type="button">−</button><span class="stat-value">1</span><button class="btn stat-plus" type="button">+</button></span></div>
+        <div class="stat-row" data-stat="knowledge"><span><strong>Wiedza</strong><br><span class="text-small app-muted">Magia, tropy i zagadki</span></span><span class="stat-controls"><button class="btn stat-minus" type="button">−</button><span class="stat-value">1</span><button class="btn stat-plus" type="button">+</button></span></div>
+        <div class="stat-row" data-stat="charisma"><span><strong>Charyzma</strong><br><span class="text-small app-muted">Perswazja i dowodzenie</span></span><span class="stat-controls"><button class="btn stat-minus" type="button">−</button><span class="stat-value">1</span><button class="btn stat-plus" type="button">+</button></span></div>
+        <div class="stat-row" data-stat="luck"><span><strong>Szczęście</strong><br><span class="text-small app-muted">Ryzyko i nieoczekiwane okazje</span></span><span class="stat-controls"><button class="btn stat-minus" type="button">−</button><span class="stat-value">1</span><button class="btn stat-plus" type="button">+</button></span></div>
+      </div>
+      <div class="app-notice" id="stats-notice" aria-live="polite"></div>
+      <div class="app-actions"><button type="button" class="btn btn-primary" id="save-character">Zapisz bohatera</button></div>
     </div>
   </section>
 
@@ -216,13 +248,15 @@
     </div>
   </section>
 
-  <section class="app-screen" data-screen="settings" hidden>
-    <div class="app-header"><div><h1>Ustawienia</h1><div class="app-muted">Dostosuj głos i sposób odpowiadania.</div></div><button class="btn" type="button" data-go="menu">← Menu</button></div>
-    <div class="app-panel app-form-grid">
-      <label class="app-field">Mikrofon podczas tury<select id="setting-microphone"><option selected>Uruchamiany przyciskiem</option><option>Automatycznie</option></select></label>
-      <div class="app-field"><span>Głos Mistrza Gry</span><strong>Google · polski męski</strong><span class="text-small app-muted" id="voice-quality-hint">Głos jest wybierany automatycznie.</span></div>
-      <label class="app-field">Szybkość narracji<select id="setting-speech-rate"><option value="0.78">Wolna</option><option value="0.95" selected>Normalna</option><option value="1.12">Szybka</option></select></label>
-      <label class="app-field">Rozmiar tekstu<select><option>Mały</option><option selected>Standardowy</option><option>Duży</option></select></label>
+  <section class="app-screen" data-screen="inventory" hidden>
+    <div class="app-header"><div><h1>Ekwipunek bohatera</h1><div class="app-muted">Przeciągnij przedmiot z plecaka na pasujące miejsce.</div></div><button class="btn" type="button" id="inventory-back">← Wróć do gry</button></div>
+    <div class="inventory-layout">
+      <section class="app-panel"><h2>Wyposażenie</h2><div class="equipment-grid">
+        <div class="equip-slot" data-slot="weapon"><span class="equip-slot-title">⚔️ Broń</span><div class="equip-slot-content"></div></div>
+        <div class="equip-slot" data-slot="armor"><span class="equip-slot-title">🛡️ Zbroja</span><div class="equip-slot-content"></div></div>
+        <div class="equip-slot" data-slot="accessory"><span class="equip-slot-title">📿 Dodatek</span><div class="equip-slot-content"></div></div>
+      </div></section>
+      <section class="app-panel"><h2>Plecak</h2><div class="backpack" id="inventory-backpack" data-slot="backpack"></div><div class="app-notice" id="inventory-notice" aria-live="polite"></div></section>
     </div>
   </section>
 
@@ -264,7 +298,18 @@
     #ai-gm-prototype .gm-progress > span { display:block; height:100%; width:20%; background:var(--viz-series-1); transition:width .25s ease; }
     #ai-gm-prototype .gm-listening { animation:gm-pulse 1.2s ease-in-out infinite; }
     #ai-gm-prototype .gm-toast { margin-top:10px; color:var(--muted-foreground); min-height:1.4em; }
+    #ai-gm-prototype .dice-stage { height:118px; display:grid; place-items:center; perspective:600px; }
+    #ai-gm-prototype .dice-cube { position:relative; width:62px; height:62px; transform-style:preserve-3d; transform:rotateX(-14deg) rotateY(24deg); }
+    #ai-gm-prototype .dice-cube.is-rolling { animation:dice-roll-3d 1s cubic-bezier(.2,.8,.2,1); }
+    #ai-gm-prototype .dice-face { position:absolute; width:62px; height:62px; display:grid; place-items:center; border:2px solid #f8d98b; border-radius:10px; background:linear-gradient(145deg,#e6b85c,#8d5f22); color:#201307; font-size:1.45rem; font-weight:800; box-shadow:inset 0 0 18px #fff5,0 4px 16px #0008; backface-visibility:hidden; }
+    #ai-gm-prototype .dice-front { transform:translateZ(31px); } #ai-gm-prototype .dice-back { transform:rotateY(180deg) translateZ(31px); }
+    #ai-gm-prototype .dice-right { transform:rotateY(90deg) translateZ(31px); } #ai-gm-prototype .dice-left { transform:rotateY(-90deg) translateZ(31px); }
+    #ai-gm-prototype .dice-top { transform:rotateX(90deg) translateZ(31px); } #ai-gm-prototype .dice-bottom { transform:rotateX(-90deg) translateZ(31px); }
+    #ai-gm-prototype .dice-controls { display:grid; grid-template-columns:1fr auto; gap:7px; }
+    #ai-gm-prototype .dice-controls select { border:1px solid var(--input); border-radius:9px; padding:8px; background:var(--background); color:var(--foreground); }
+    #ai-gm-prototype .dice-result { min-height:2.6em; text-align:center; color:var(--primary); }
     @keyframes gm-pulse { 50% { opacity:.55; } }
+    @keyframes dice-roll-3d { 0%{transform:rotateX(0) rotateY(0) rotateZ(0) scale(.85)} 35%{transform:rotateX(420deg) rotateY(230deg) rotateZ(130deg) scale(1.12)} 70%{transform:rotateX(720deg) rotateY(560deg) rotateZ(310deg)} 100%{transform:rotateX(1066deg) rotateY(744deg) rotateZ(360deg)} }
     @media (max-width:640px) {
       #ai-gm-prototype .gm-layout { grid-template-columns:1fr; }
       #ai-gm-prototype .gm-choices { grid-template-columns:1fr; }
@@ -280,6 +325,7 @@
     <div class="viz-row">
       <span class="viz-badge" id="gm-tokens">◆ 8 tokenów</span>
       <span class="viz-badge" id="gm-online">● 1 gracz online</span>
+      <button type="button" class="btn" data-go="inventory">🎒 Ekwipunek</button>
       <button type="button" class="btn" id="gm-speech-toggle">🔊 Głos włączony</button>
       <button type="button" class="btn" data-go="menu">Zapisz i wyjdź</button>
     </div>
@@ -333,6 +379,16 @@
         <div class="gm-log text-small" id="gm-log">
           <div class="gm-log-entry">Drużyna przyjęła zlecenie burmistrza.</div>
         </div>
+      </section>
+      <section class="app-panel" style="padding:12px">
+        <h3 class="gm-section-title">Rzut kostką</h3>
+        <div class="dice-stage" aria-label="Trójwymiarowa kostka">
+          <div class="dice-cube" id="dice-cube">
+            <span class="dice-face dice-front" id="dice-front">20</span><span class="dice-face dice-back">2</span><span class="dice-face dice-right">3</span><span class="dice-face dice-left">4</span><span class="dice-face dice-top">5</span><span class="dice-face dice-bottom">6</span>
+          </div>
+        </div>
+        <div class="dice-controls"><select id="dice-sides" aria-label="Rodzaj kostki"><option value="4">k4</option><option value="6">k6</option><option value="8">k8</option><option value="10">k10</option><option value="12">k12</option><option value="20" selected>k20</option></select><button type="button" class="btn btn-primary" id="dice-roll">Rzuć</button></div>
+        <div class="dice-result text-small" id="dice-result" aria-live="polite">Wybierz kostkę i rzuć.</div>
       </section>
     </aside>
   </div>
@@ -428,6 +484,13 @@
       const customText = root.querySelector("#gm-custom-text");
       const voiceBtn = root.querySelector("#gm-voice");
       const speechToggle = root.querySelector("#gm-speech-toggle");
+      const diceCube = root.querySelector("#dice-cube");
+      const diceFront = root.querySelector("#dice-front");
+      const diceResult = root.querySelector("#dice-result");
+
+      function activeScene() {
+        return currentGameState?.dynamicScene || scenes[sceneIndex];
+      }
 
       function activeName() {
         if (currentGameState?.targetMode === "player") return currentGameState.targetPlayerName;
@@ -447,7 +510,6 @@
         }).join("");
       }
 
-      const voiceHint = document.querySelector("#voice-quality-hint");
       let availableVoices = [];
       let narratorVoice = null;
 
@@ -468,14 +530,12 @@
 
       function refreshVoiceList() {
         if (!window.speechSynthesis) {
-          voiceHint.textContent = "Ta przeglądarka nie obsługuje czytania głosowego.";
           return;
         }
         availableVoices = window.speechSynthesis.getVoices()
           .filter(function (voice) { return voice.lang.toLowerCase().startsWith("pl"); })
           .sort(function (a, b) { return voiceScore(b) - voiceScore(a); });
         narratorVoice = availableVoices[0] || null;
-        voiceHint.textContent = narratorVoice ? "Aktywny głos: " + narratorVoice.name + "." : "Nie znaleziono polskiego głosu. Zainstaluj polski pakiet mowy w systemie.";
       }
 
       function selectedVoice() {
@@ -485,12 +545,12 @@
       function speakScene(force) {
         if (!speechEnabled || !window.speechSynthesis) return;
         if (!force && lastSpokenScene === sceneIndex) return;
-        const scene = scenes[sceneIndex];
+        const scene = activeScene();
         lastSpokenScene = sceneIndex;
         window.speechSynthesis.cancel();
         const utterance = new SpeechSynthesisUtterance(scene.narrative + ". " + scene.question);
         utterance.lang = "pl-PL";
-        utterance.rate = Number(document.querySelector("#setting-speech-rate").value) || 0.95;
+        utterance.rate = 0.93;
         utterance.pitch = 0.92;
         utterance.volume = 1;
         const voice = selectedVoice();
@@ -502,11 +562,11 @@
       if (window.speechSynthesis) window.speechSynthesis.addEventListener("voiceschanged", refreshVoiceList);
 
       function renderScene() {
-        const scene = scenes[sceneIndex];
+        const scene = activeScene();
         const myId = socket?.id;
         const myTurn = !currentGameState || currentGameState.requiredPlayerIds.includes(myId);
         const alreadyAnswered = Boolean(currentGameState?.respondedPlayerIds.includes(myId));
-        const interactionLocked = !myTurn || alreadyAnswered;
+        const interactionLocked = !myTurn || alreadyAnswered || Boolean(currentGameState?.generating);
         root.querySelector("#gm-chapter").textContent = "Scena " + (sceneIndex + 1) + " z " + scenes.length;
         root.querySelector("#gm-target").textContent = currentGameState?.targetMode === "player" ? "Pytanie do: " + currentGameState.targetPlayerName : "Pytanie do wszystkich";
         root.querySelector("#gm-narrative").textContent = scene.narrative;
@@ -533,7 +593,7 @@
         voiceBtn.classList.remove("gm-listening");
         voiceBtn.textContent = "🎙 Powiedz";
         root.querySelector("#gm-custom-open").disabled = interactionLocked;
-        root.querySelector("#gm-toast").textContent = alreadyAnswered ? "Twoja odpowiedź została zapisana. Czekamy na pozostałych graczy…" : (!myTurn ? "Mistrz Gry czeka teraz na odpowiedź wskazanego gracza." : "");
+        root.querySelector("#gm-toast").textContent = currentGameState?.generating ? "✦ Mistrz Gry analizuje dotychczasową fabułę i dostosowuje kolejną scenę…" : (alreadyAnswered ? "Twoja odpowiedź została zapisana. Czekamy na pozostałych graczy…" : (!myTurn ? "Mistrz Gry czeka teraz na odpowiedź wskazanego gracza." : ""));
         renderPlayers();
         if (!root.hidden) window.setTimeout(function () { speakScene(false); }, 120);
       }
@@ -626,6 +686,32 @@
 
       root.addEventListener("aigmv2:speak", function () { speakScene(true); });
 
+      function showDiceRoll(roll) {
+        if (!roll) return;
+        diceFront.textContent = roll.result;
+        diceCube.classList.remove("is-rolling");
+        void diceCube.offsetWidth;
+        diceCube.classList.add("is-rolling");
+        diceResult.textContent = roll.playerName + " rzuca k" + roll.sides + "…";
+        window.setTimeout(function () {
+          diceCube.classList.remove("is-rolling");
+          diceResult.textContent = roll.playerName + " wyrzuca " + roll.result + " na k" + roll.sides + ".";
+        }, 1000);
+      }
+
+      root.querySelector("#dice-roll").addEventListener("click", function () {
+        if (!socket?.connected || !window.currentRoomCode) {
+          diceResult.textContent = "Dołącz do aktywnej kampanii, aby rzucić.";
+          return;
+        }
+        const button = root.querySelector("#dice-roll");
+        button.disabled = true;
+        socket.emit("dice:roll", { sides: Number(root.querySelector("#dice-sides").value) }, function (result) {
+          button.disabled = false;
+          if (!result?.ok) diceResult.textContent = result?.error || "Rzut nie powiódł się.";
+        });
+      });
+
       window.setAccountTokens = function (balance) {
         tokens = Number(balance) || 0;
         root.querySelector("#gm-tokens").textContent = "◆ " + tokens + " tokenów";
@@ -648,6 +734,7 @@
         });
         if (state.settings?.campaign) root.querySelector(".gm-title").textContent = state.settings.campaign;
         if (state.lastDecision) addLog(state.lastDecision.playerName + ": " + state.lastDecision.choice);
+        if (state.lastRoll) showDiceRoll(state.lastRoll);
         if (start) lastSpokenScene = -1;
         renderScene();
       };
@@ -659,6 +746,7 @@
           window.applyGameState(state, true);
         });
         socket.on("game:update", function (state) { window.applyGameState(state, false); });
+        socket.on("dice:result", showDiceRoll);
       }
 
       renderScene();
@@ -679,6 +767,13 @@
     let authSession = null;
     let accountLoadPromise = null;
     let pendingScreen = "menu";
+    let inventoryReturnScreen = "lobby";
+    const characterStats = { strength: 1, dexterity: 1, endurance: 1, knowledge: 1, charisma: 1, luck: 1 };
+    const itemCatalog = {
+      iron_sword: { name: "Żelazny miecz", icon: "⚔️", bonus: "+2 Siła" }, hunting_bow: { name: "Łuk myśliwski", icon: "🏹", bonus: "+2 Zręczność" }, oak_staff: { name: "Dębowy kostur", icon: "🪄", bonus: "+2 Wiedza" },
+      chainmail: { name: "Kolczuga", icon: "🛡️", bonus: "+2 Wytrzymałość" }, leather_armor: { name: "Skórzana zbroja", icon: "🥋", bonus: "+1 Zręczność" }, mystic_cloak: { name: "Płaszcz mistyka", icon: "🧥", bonus: "+1 Wiedza" },
+      moon_amulet: { name: "Amulet księżyca", icon: "📿", bonus: "+1 Szczęście" }, healing_potion: { name: "Mikstura leczenia", icon: "🧪", bonus: "Odnawia zdrowie" }
+    };
     try { authSession = JSON.parse(localStorage.getItem("aigmv2-auth-session") || "null"); } catch {}
     window.getAccessToken = function () { return authSession?.access_token || ""; };
 
@@ -834,6 +929,102 @@
       startButton.textContent = room.hostId !== socket?.id ? "Czekamy na gospodarza" : (everyoneReady ? "Rozpocznij kampanię" : "Czekamy na postacie");
     }
 
+    function myCharacter() {
+      return currentRoom?.players.find(function (player) { return player.id === socket?.id; })?.character || null;
+    }
+
+    function makeItemCard(itemId) {
+      const item = itemCatalog[itemId];
+      if (!item) return null;
+      const card = document.createElement("div");
+      card.className = "item-card";
+      card.draggable = true;
+      card.dataset.itemId = itemId;
+      const title = document.createElement("div");
+      const icon = document.createElement("span");
+      icon.className = "item-icon";
+      icon.textContent = item.icon;
+      title.append(icon, document.createTextNode(item.name));
+      const bonus = document.createElement("small");
+      bonus.textContent = item.bonus;
+      card.append(title, bonus);
+      card.addEventListener("dragstart", function (event) { event.dataTransfer.setData("text/plain", itemId); });
+      return card;
+    }
+
+    function renderInventory() {
+      const character = myCharacter();
+      const notice = document.querySelector("#inventory-notice");
+      document.querySelectorAll(".equip-slot-content").forEach(function (container) { container.innerHTML = ""; });
+      const backpack = document.querySelector("#inventory-backpack");
+      backpack.innerHTML = "";
+      if (!character) {
+        notice.textContent = "Najpierw utwórz postać i rozdziel jej statystyki.";
+        return;
+      }
+      notice.textContent = "";
+      (character.inventory || []).forEach(function (itemId) {
+        const card = makeItemCard(itemId);
+        if (card) backpack.appendChild(card);
+      });
+      Object.entries(character.equipment || {}).forEach(function ([slot, itemId]) {
+        if (!itemId) return;
+        const card = makeItemCard(itemId);
+        const container = document.querySelector('.equip-slot[data-slot="' + slot + '"] .equip-slot-content');
+        if (card && container) container.appendChild(card);
+      });
+    }
+
+    function moveItem(itemId, targetSlot) {
+      const notice = document.querySelector("#inventory-notice");
+      if (!socket?.connected || !currentRoom) { notice.textContent = "Brak połączenia z drużyną."; return; }
+      notice.textContent = "Przenoszenie…";
+      socket.emit("player:equip", { itemId: itemId, targetSlot: targetSlot }, function (result) {
+        notice.textContent = result?.ok ? "Wyposażenie zaktualizowane." : (result?.error || "Nie udało się przenieść przedmiotu.");
+      });
+    }
+
+    document.querySelectorAll(".equip-slot,.backpack").forEach(function (target) {
+      target.addEventListener("dragover", function (event) { event.preventDefault(); target.classList.add("is-over"); });
+      target.addEventListener("dragleave", function () { target.classList.remove("is-over"); });
+      target.addEventListener("drop", function (event) {
+        event.preventDefault();
+        target.classList.remove("is-over");
+        moveItem(event.dataTransfer.getData("text/plain"), target.dataset.slot);
+      });
+    });
+
+    document.querySelector("#inventory-back").addEventListener("click", function () { showScreen(inventoryReturnScreen); });
+
+    function renderCharacterStats() {
+      const spent = Object.values(characterStats).reduce(function (sum, value) { return sum + value - 1; }, 0);
+      document.querySelector("#stat-points-left").textContent = 8 - spent;
+      document.querySelectorAll("#character-stats-grid [data-stat]").forEach(function (row) {
+        const value = characterStats[row.dataset.stat];
+        row.querySelector(".stat-value").textContent = value;
+        row.querySelector(".stat-minus").disabled = value <= 1;
+        row.querySelector(".stat-plus").disabled = value >= 5 || spent >= 8;
+      });
+      return 8 - spent;
+    }
+
+    document.querySelector("#character-stats-grid").addEventListener("click", function (event) {
+      const row = event.target.closest("[data-stat]");
+      if (!row) return;
+      const key = row.dataset.stat;
+      const left = renderCharacterStats();
+      if (event.target.closest(".stat-plus") && characterStats[key] < 5 && left > 0) characterStats[key] += 1;
+      if (event.target.closest(".stat-minus") && characterStats[key] > 1) characterStats[key] -= 1;
+      document.querySelector("#stats-notice").textContent = "";
+      renderCharacterStats();
+    });
+
+    document.querySelector("#go-character-stats").addEventListener("click", function () {
+      if (!document.querySelector("#character-name").value.trim()) return alert("Nadaj postaci imię.");
+      renderCharacterStats();
+      showScreen("character-stats");
+    });
+
     function showScreen(name) {
       screens.forEach(function (screen) {
         screen.hidden = screen.dataset.screen !== name;
@@ -850,6 +1041,12 @@
         if (["setup", "join", "saves"].includes(destination)) {
           event.preventDefault();
           openProtectedScreen(destination);
+          return;
+        }
+        if (destination === "inventory") {
+          inventoryReturnScreen = currentRoom?.status === "playing" ? "game" : "lobby";
+          renderInventory();
+          showScreen("inventory");
           return;
         }
         if (destination === "menu") pendingScreen = "menu";
@@ -933,13 +1130,18 @@
     document.querySelector("#save-character").addEventListener("click", function () {
       const name = document.querySelector("#character-name").value.trim() || "Bez imienia";
       if (!socket?.connected || !currentRoom) return alert("Najpierw dołącz do pokoju.");
+      if (renderCharacterStats() !== 0) {
+        document.querySelector("#stats-notice").textContent = "Rozdziel wszystkie 8 punktów przed zapisaniem bohatera.";
+        return;
+      }
       socket.emit("player:update", {
         playerName: activePlayerName,
         character: {
           name: name,
           characterClass: selectedClass,
           origin: document.querySelector("#character-origin").value,
-          story: document.querySelector("#character-story").value
+          story: document.querySelector("#character-story").value,
+          stats: characterStats
         }
       }, function (result) {
         if (!result?.ok) return alert(result?.error || "Nie udało się zapisać postaci.");
@@ -984,6 +1186,7 @@
       });
       socket.on("room:update", function (room) {
         renderLobby(room);
+        if (!document.querySelector('[data-screen="inventory"]').hidden) renderInventory();
       });
       window.setInterval(function () {
         if (socket.connected && currentRoom) {
@@ -1007,6 +1210,7 @@
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", function () { navigator.serviceWorker.register("/sw.js").catch(function () {}); });
     }
+    renderCharacterStats();
   }());
 </script>
 </body>
