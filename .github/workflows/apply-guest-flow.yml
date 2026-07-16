@@ -1,0 +1,27 @@
+name: Verify guest entry flow
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - scripts/apply-guest-flow.js
+      - .github/workflows/apply-guest-flow.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-index:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Verify fast guest menu
+        run: node scripts/apply-guest-flow.js
